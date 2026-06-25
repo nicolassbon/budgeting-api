@@ -1,0 +1,42 @@
+# Keep the Docker build context lean and avoid leaking local state into the image.
+
+# Build artifacts & caches
+build/
+.gradle/
+bin/
+out/
+
+# IDE / editor
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+.classpath
+.project
+.settings/
+.factorypath
+
+# Secrets — NEVER bake into images
+.env
+.env.*
+!.env.example
+
+# Git / misc
+.git/
+.gitattributes
+.gitignore
+.gitconfig
+
+# Tooling / docs not needed at build time
+.agents/
+.atl/
+openspec/
+HELP.md
+PRD.md
+progress.md
+README.md
+compose.yml
+Dockerfile
+.dockerignore
+.idea/
