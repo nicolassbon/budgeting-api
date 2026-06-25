@@ -25,3 +25,8 @@ out/
 
 ### Tooling cache ###
 .atl/
+
+### Local environment ###
+.env
+.env.*
+!.env.example
