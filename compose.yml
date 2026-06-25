@@ -1,0 +1,19 @@
+services:
+  database:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-app}
+      POSTGRES_DB: ${POSTGRES_DB:-transaction}
+    ports:
+      - "5432:5432"
+    volumes:
+      - transaction_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-app} -d ${POSTGRES_DB:-transaction}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  transaction_data:

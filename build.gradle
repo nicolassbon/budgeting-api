@@ -21,12 +21,22 @@ repositories {
 
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-database-postgresql'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    developmentOnly 'org.springframework.boot:spring-boot-docker-compose'
+    testImplementation 'org.springframework.boot:spring-boot-docker-compose'
+    testImplementation 'org.testcontainers:junit-jupiter:1.21.2'
+    testImplementation 'org.testcontainers:postgresql:1.21.2'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
     implementation platform("org.springframework.ai:spring-ai-bom:2.0.0-M4")
     implementation 'org.springframework.ai:spring-ai-starter-model-openai'
+
+    runtimeOnly 'org.postgresql:postgresql'
 }
 
 tasks.named('test') {
