@@ -1,41 +1,60 @@
+schema: spec-driven
 strict_tdd: true
 context: |
-  budgeting is a Java/Gradle project.
-  Detected markers: build.gradle.
-  Additional evidence: Java/Gradle manifest detected via build.gradle; Test-like files detected (13); examples: .idea/modules/budgeting.test.iml, src/test/java/dio/budgeting/BudgetingApplicationTests.java, src/test/java/dio/budgeting/OpenAiChatClientIT.java, src/test/java/dio/budgeting/OpenAiChatModelIT.java, src/test/java/dio/budgeting/OpenAiSpeechModelIT.java.
-  Primary test command: ./gradlew test.
-  Unit tests: Gradle test (./gradlew test).
-  Integration tests: none.
-  E2E tests: none.
+  Stack: Java 25 + Gradle wrapper + Spring Boot 4.0.6 + Spring AI 2.0.0-M4 + PostgreSQL/Flyway.
+  Architecture: backend-only layered slice under dio.budgeting.{domain,application,infraestructure,config}; preserve the infraestructure typo.
+  Entry points: root AI/demo controllers plus transaction HTTP adapter in infraestructure/http.
+  Persistence: Spring Data JPA validates schema on startup and relies on dio.budgeting.config.FlywayConfig to migrate before Hibernate.
+  Runtime: docker compose runs Postgres and optional full-stack backend; .env.example documents the local environment contract.
+  Testing: JUnit 5 via ./gradlew test, SpringBootTest + Testcontainers integration coverage, and env-gated live OpenAI tests.
 rules:
   proposal:
     require_problem_statement: true
+    preserve_api_compatibility: true
   spec:
     require_acceptance_criteria: true
+    scenario_format: Given/When/Then
   design:
     require_tradeoffs: true
+    document_migration_impact: true
   tasks:
     protect_review_workload: true
+    keep_tasks_session_sized: true
   apply:
     test_command: "./gradlew test"
+    require_flyway_for_persistence_changes: true
+    preserve_infraestructure_typo: true
   verify:
     test_command: "./gradlew test"
+    smoke_commands:
+      - "./gradlew test --tests \"dio.budgeting.BudgetingApplicationTests\""
+      - "./gradlew test --tests \"dio.budgeting.FlywayMigrationIT\""
+  archive:
+    preserve_archive_history: true
 testing:
-  detected: "2026-05-18"
+  detected: "2026-06-27"
   runner:
     command: "./gradlew test"
-    framework: "Gradle test"
+    framework: "Gradle test + JUnit Platform"
   layers:
-    unit: "Gradle test"
-    integration: ""
+    unit: "JUnit 5 via Gradle test"
+    integration: "SpringBootTest and Testcontainers PostgreSQL"
     e2e: ""
   commands:
     unit:
       - scope: "."
         command: "./gradlew test"
-        framework: "Gradle test"
+        framework: "JUnit 5"
     integration:
-      []
+      - scope: "."
+        command: "./gradlew test --tests \"dio.budgeting.BudgetingApplicationTests\""
+        framework: "SpringBootTest"
+      - scope: "."
+        command: "./gradlew test --tests \"dio.budgeting.FlywayMigrationIT\""
+        framework: "JUnit 5 + Testcontainers PostgreSQL"
+      - scope: "."
+        command: "./gradlew test --tests \"dio.budgeting.ToolCallingIT\""
+        framework: "SpringBootTest + Spring AI (requires OPENAI_API_KEY)"
     e2e:
       []
   coverage:

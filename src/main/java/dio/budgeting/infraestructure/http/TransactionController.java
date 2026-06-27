@@ -1,7 +1,6 @@
 package dio.budgeting.infraestructure.http;
 
-import dio.budgeting.application.ListTransactionsByCategoryUseCase;
-import dio.budgeting.application.PersistTransactionUseCase;
+import dio.budgeting.application.TransactionService;
 import dio.budgeting.domain.Category;
 import dio.budgeting.infraestructure.http.request.TransactionRequest;
 import dio.budgeting.infraestructure.http.response.TransactionResponse;
@@ -23,24 +22,21 @@ import java.util.List;
 @RequestMapping("/transactions")
 public class TransactionController {
 
-    private final PersistTransactionUseCase persistTransactionUseCase;
-    private final ListTransactionsByCategoryUseCase listTransactionsByCategoryUseCase;
+    private final TransactionService transactionService;
     private final TranscriptionModel transcriptionModel;
     private final ChatClient chatClient;
     private final TextToSpeechModel textToSpeechModel;
 
-    public TransactionController(PersistTransactionUseCase persistTransactionUseCase,
-                                 ListTransactionsByCategoryUseCase listTransactionsByCategoryUseCase,
+    public TransactionController(TransactionService transactionService,
                                  TranscriptionModel transcriptionModel,
                                  ChatClient.Builder chatClientBuilder,
                                  @Value("classpath:/prompts/system-message.st") Resource systemPrompt,
                                  TextToSpeechModel textToSpeechModel) throws IOException {
-        this.persistTransactionUseCase = persistTransactionUseCase;
-        this.listTransactionsByCategoryUseCase = listTransactionsByCategoryUseCase;
+        this.transactionService = transactionService;
         this.transcriptionModel = transcriptionModel;
         this.chatClient = chatClientBuilder
                 .defaultSystem(systemPrompt.getContentAsString(Charset.defaultCharset()))
-                .defaultTools(persistTransactionUseCase, listTransactionsByCategoryUseCase)
+                .defaultTools(transactionService)
                 .build();
         this.textToSpeechModel = textToSpeechModel;
     }
@@ -48,13 +44,13 @@ public class TransactionController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public TransactionResponse createTransaction(@RequestBody TransactionRequest request) {
-        var transaction = persistTransactionUseCase.execute(request.toInput());
+        var transaction = transactionService.create(request.toInput());
         return TransactionResponse.from(transaction);
     }
 
     @GetMapping("/{category}")
     public List<TransactionResponse> findAllTransactionsByCategory(@PathVariable Category category) {
-        return listTransactionsByCategoryUseCase.execute(category)
+        return transactionService.findAllByCategory(category)
                 .stream()
                 .map(TransactionResponse::from)
                 .toList();
