@@ -23,8 +23,8 @@ public class JpaTransactionRepository implements TransactionRepository {
     }
 
     @Override
-    public List<Transaction> findAllByCategory(Category category) {
-        return transactionEntityRepository.findAllByCategory(category)
+    public List<Transaction> findAllByCategoryAndOwnerId(Category category, Long ownerId) {
+        return transactionEntityRepository.findAllByCategoryAndOwnerId(category, ownerId)
                 .stream()
                 .map(TransactionEntity::toDomain)
                 .toList();

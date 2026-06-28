@@ -19,6 +19,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import java.util.List;
 
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -120,6 +121,8 @@ class TransactionControllerTest {
                 .andExpect(jsonPath("$.description").value("Coffee and bread"))
                 .andExpect(jsonPath("$.amount").value(2300))
                 .andExpect(jsonPath("$.category").value("GROCERIES"));
+
+        verifyNoInteractions(transactionService);
     }
 
     @Test

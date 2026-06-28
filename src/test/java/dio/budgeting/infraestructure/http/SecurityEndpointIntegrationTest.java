@@ -1,0 +1,293 @@
+package dio.budgeting.infraestructure.http;
+
+import dio.budgeting.BudgetingApplication;
+import dio.budgeting.assistant.TransactionAssistant;
+import dio.budgeting.assistant.TransactionDraft;
+import dio.budgeting.domain.Category;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.Answers;
+import org.springframework.ai.audio.transcription.TranscriptionModel;
+import org.springframework.ai.audio.tts.TextToSpeechModel;
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.openai.OpenAiChatModel;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.mock.web.MockHttpSession;
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.context.WebApplicationContext;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.setup.MockMvcBuilders.webAppContextSetup;
+
+@SpringBootTest(classes = BudgetingApplication.class, properties = {
+        "spring.ai.openai.api-key=test-key",
+        "spring.docker.compose.enabled=false"
+})
+@Testcontainers
+class SecurityEndpointIntegrationTest {
+    @Container
+    private static final PostgreSQLContainer<?> POSTGRESQL = new PostgreSQLContainer<>("postgres:16-alpine")
+            .withDatabaseName("budgeting")
+            .withUsername("app")
+            .withPassword("app");
+
+    @DynamicPropertySource
+    static void configureDatabase(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", POSTGRESQL::getJdbcUrl);
+        registry.add("spring.datasource.username", POSTGRESQL::getUsername);
+        registry.add("spring.datasource.password", POSTGRESQL::getPassword);
+    }
+
+    @Autowired
+    private WebApplicationContext webApplicationContext;
+
+    @MockitoBean(answers = Answers.RETURNS_DEEP_STUBS)
+    private ChatClient chatClient;
+
+    @MockitoBean
+    private OpenAiChatModel openAiChatModel;
+
+    @MockitoBean
+    private TranscriptionModel transcriptionModel;
+
+    @MockitoBean
+    private TextToSpeechModel textToSpeechModel;
+
+    @MockitoBean
+    private TransactionAssistant transactionAssistant;
+
+    private MockMvc mockMvc;
+
+    @BeforeEach
+    void setUp() {
+        mockMvc = webAppContextSetup(webApplicationContext)
+                .apply(springSecurity())
+                .build();
+    }
+
+    @Test
+    void shouldRejectAnonymousProtectedPostAndMultipartEndpoints() throws Exception {
+        mockMvc.perform(post("/transactions")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(transactionJson("Anonymous groceries")))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(multipart("/transactions/ai")
+                        .file(audioFile())
+                        .with(csrf()))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(post("/transactions/interpret")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"prompt":"latte and bread"}
+                                """))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(get("/api/chat-client").param("prompt", "hello"))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(get("/api/chat-model").param("prompt", "hello"))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(multipart("/api/transcribe")
+                        .file(audioFile())
+                        .with(csrf()))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(post("/api/sinthesize")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"text":"hello world"}
+                                """))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void shouldCreateHttpOnlySessionCookieOnLogin() throws Exception {
+        String email = uniqueEmail();
+        register(email);
+
+        mockMvc.perform(post("/auth/login")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(authJson(email, "secret-password")))
+                .andExpect(status().isOk())
+                .andExpect(cookie().httpOnly("JSESSIONID", true));
+    }
+
+    @Test
+    void shouldScopeTransactionListingToAuthenticatedOwnerWithTwoUsers() throws Exception {
+        MockHttpSession aliceSession = registerAndLogin(uniqueEmail());
+        MockHttpSession bobSession = registerAndLogin(uniqueEmail());
+        String aliceDescription = "Alice groceries %s".formatted(UUID.randomUUID());
+        String bobDescription = "Bob groceries %s".formatted(UUID.randomUUID());
+
+        mockMvc.perform(post("/transactions")
+                        .with(csrf())
+                        .session(aliceSession)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(transactionJson(aliceDescription)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.description").value(aliceDescription));
+
+        mockMvc.perform(post("/transactions")
+                        .with(csrf())
+                        .session(bobSession)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(transactionJson(bobDescription)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.description").value(bobDescription));
+
+        String aliceList = mockMvc.perform(get("/transactions/GROCERIES")
+                        .session(aliceSession))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        assertThat(aliceList).contains(aliceDescription);
+        assertThat(aliceList).doesNotContain(bobDescription);
+    }
+
+    @Test
+    void shouldPreserveAuthenticatedAssistantAndAiEndpointContractsThroughSecurity() throws Exception {
+        MockHttpSession session = registerAndLogin(uniqueEmail());
+        when(chatClient.prompt().user("hello").call().content()).thenReturn("chat-client-response");
+        when(openAiChatModel.call("hello")).thenReturn("chat-model-response");
+        when(transcriptionModel.transcribe(any())).thenReturn("transcribed-text");
+        when(textToSpeechModel.call("hello world")).thenReturn("mp3-bytes".getBytes());
+        when(transactionAssistant.transcribe(any())).thenReturn(ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("audio/mp3"))
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.attachment().filename("audio.mp3").build().toString())
+                .body(new ByteArrayResource("transaction-audio".getBytes())));
+        when(transactionAssistant.interpret("latte and bread"))
+                .thenReturn(new TransactionDraft("Coffee and bread", 2300L, Category.GROCERIES));
+
+        mockMvc.perform(get("/api/chat-client")
+                        .session(session)
+                        .param("prompt", "hello"))
+                .andExpect(status().isOk())
+                .andExpect(content().string("chat-client-response"));
+
+        mockMvc.perform(get("/api/chat-model")
+                        .session(session)
+                        .param("prompt", "hello"))
+                .andExpect(status().isOk())
+                .andExpect(content().string("chat-model-response"));
+
+        mockMvc.perform(multipart("/api/transcribe")
+                        .file(audioFile())
+                        .with(csrf())
+                        .session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string("transcribed-text"));
+
+        mockMvc.perform(post("/api/sinthesize")
+                        .with(csrf())
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"text":"hello world"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType("audio/mp3"))
+                .andExpect(header().string("Content-Disposition", "attachment; filename=\"audio.mp3\""))
+                .andExpect(content().bytes("mp3-bytes".getBytes()));
+
+        mockMvc.perform(multipart("/transactions/ai")
+                        .file(audioFile())
+                        .with(csrf())
+                        .session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType("audio/mp3"))
+                .andExpect(content().bytes("transaction-audio".getBytes()));
+
+        mockMvc.perform(post("/transactions/interpret")
+                        .with(csrf())
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"prompt":"latte and bread"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.description").value("Coffee and bread"))
+                .andExpect(jsonPath("$.amount").value(2300))
+                .andExpect(jsonPath("$.category").value("GROCERIES"));
+    }
+
+    private MockHttpSession registerAndLogin(String email) throws Exception {
+        register(email);
+        return (MockHttpSession) mockMvc.perform(post("/auth/login")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(authJson(email, "secret-password")))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getRequest()
+                .getSession(false);
+    }
+
+    private void register(String email) throws Exception {
+        mockMvc.perform(post("/auth/register")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(authJson(email, "secret-password")))
+                .andExpect(status().isCreated());
+    }
+
+    private static MockMultipartFile audioFile() {
+        return new MockMultipartFile("file", "audio.wav", "audio/wav", "audio".getBytes());
+    }
+
+    private static String uniqueEmail() {
+        return "user-%s@example.com".formatted(UUID.randomUUID());
+    }
+
+    private static String authJson(String email, String password) {
+        return """
+                {"email":"%s","password":"%s"}
+                """.formatted(email, password);
+    }
+
+    private static String transactionJson(String description) {
+        return """
+                {
+                  "description": "%s",
+                  "category": "GROCERIES",
+                  "amount": 1250
+                }
+                """.formatted(description);
+    }
+}

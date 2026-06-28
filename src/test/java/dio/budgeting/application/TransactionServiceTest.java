@@ -1,6 +1,7 @@
 package dio.budgeting.application;
 
 import dio.budgeting.application.input.PersistTransactionInput;
+import dio.budgeting.application.security.AuthenticatedUserProvider;
 import dio.budgeting.domain.Category;
 import dio.budgeting.domain.Transaction;
 import dio.budgeting.domain.TransactionId;
@@ -16,7 +17,7 @@ class TransactionServiceTest {
     @Test
     void shouldCreateTransactionByDelegatingToRepositoryAndMappingOutput() {
         var repository = new FakeTransactionRepository();
-        var service = new TransactionService(repository);
+        var service = new TransactionService(repository, () -> 42L);
 
         var output = service.create(new PersistTransactionInput("Supermarket", 1250L, Category.GROCERIES));
 
@@ -24,6 +25,7 @@ class TransactionServiceTest {
         assertThat(repository.savedTransaction().getDescription()).isEqualTo("Supermarket");
         assertThat(repository.savedTransaction().getAmount()).isEqualTo(1250L);
         assertThat(repository.savedTransaction().getCategory()).isEqualTo(Category.GROCERIES);
+        assertThat(repository.savedTransaction().getOwnerId()).isEqualTo(42L);
 
         assertThat(output.id()).isEqualTo("99");
         assertThat(output.description()).isEqualTo("Supermarket");
@@ -37,11 +39,12 @@ class TransactionServiceTest {
         repository.transactionsToReturn = List.of(
                 new Transaction(new TransactionId(10L), "Pharmacy", 450L, Category.PHARMA)
         );
-        var service = new TransactionService(repository);
+        var service = new TransactionService(repository, () -> 84L);
 
         var outputs = service.findAllByCategory(Category.PHARMA);
 
         assertThat(repository.requestedCategory()).isEqualTo(Category.PHARMA);
+        assertThat(repository.requestedOwnerId()).isEqualTo(84L);
         assertThat(outputs)
                 .singleElement()
                 .satisfies(output -> {
@@ -55,6 +58,7 @@ class TransactionServiceTest {
     private static final class FakeTransactionRepository implements TransactionRepository {
         private Transaction savedTransaction;
         private Category requestedCategory;
+        private Long requestedOwnerId;
         private List<Transaction> transactionsToReturn = List.of();
 
         @Override
@@ -64,8 +68,9 @@ class TransactionServiceTest {
         }
 
         @Override
-        public List<Transaction> findAllByCategory(Category category) {
+        public List<Transaction> findAllByCategoryAndOwnerId(Category category, Long ownerId) {
             requestedCategory = category;
+            requestedOwnerId = ownerId;
             return transactionsToReturn;
         }
 
@@ -75,6 +80,10 @@ class TransactionServiceTest {
 
         private Category requestedCategory() {
             return requestedCategory;
+        }
+
+        private Long requestedOwnerId() {
+            return requestedOwnerId;
         }
     }
 }

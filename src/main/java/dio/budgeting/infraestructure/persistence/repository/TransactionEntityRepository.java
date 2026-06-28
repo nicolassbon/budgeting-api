@@ -8,5 +8,5 @@ import java.util.List;
 
 public interface TransactionEntityRepository extends CrudRepository<TransactionEntity, Long> {
 
-    List<TransactionEntity> findAllByCategory(Category category);
+    List<TransactionEntity> findAllByCategoryAndOwnerId(Category category, Long ownerId);
 }

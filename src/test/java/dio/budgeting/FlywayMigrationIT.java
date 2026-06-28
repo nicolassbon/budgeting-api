@@ -40,12 +40,19 @@ class FlywayMigrationIT {
             assertThat(context.isActive()).isTrue();
         }
 
-        assertThat(readAppliedVersions(databaseName)).containsExactly("1");
+        assertThat(readAppliedVersions(databaseName)).containsExactly("1", "2");
         assertThat(readColumns(databaseName)).containsExactly(
                 new ColumnState("id", "bigint", "NO", "YES"),
                 new ColumnState("description", "character varying", "YES", "NO"),
                 new ColumnState("amount", "bigint", "NO", "NO"),
-                new ColumnState("category", "character varying", "YES", "NO")
+                new ColumnState("category", "character varying", "YES", "NO"),
+                new ColumnState("owner_id", "bigint", "YES", "NO")
+        );
+        assertThat(readUserColumns(databaseName)).containsExactly(
+                new ColumnState("id", "bigint", "NO", "YES"),
+                new ColumnState("email", "character varying", "NO", "NO"),
+                new ColumnState("password", "character varying", "NO", "NO"),
+                new ColumnState("role", "character varying", "NO", "NO")
         );
     }
 
@@ -54,7 +61,7 @@ class FlywayMigrationIT {
         String databaseName = createDatabase();
 
         try (ConfigurableApplicationContext ignored = startBudgetingApplication(databaseName)) {
-            assertThat(readAppliedVersions(databaseName)).containsExactly("1");
+            assertThat(readAppliedVersions(databaseName)).containsExactly("1", "2");
         }
 
         assertThatThrownBy(() -> startBudgetingApplication(
@@ -71,7 +78,7 @@ class FlywayMigrationIT {
         String databaseName = createDatabase();
 
         try (ConfigurableApplicationContext ignored = startBudgetingApplication(databaseName)) {
-            assertThat(readAppliedVersions(databaseName)).containsExactly("1");
+            assertThat(readAppliedVersions(databaseName)).containsExactly("1", "2");
         }
 
         assertThatThrownBy(() -> startSchemaValidationApplication(databaseName))
@@ -156,6 +163,35 @@ class FlywayMigrationIT {
                 WHERE table_schema = 'public' AND table_name = 'transaction_entity'
                 ORDER BY ordinal_position
                 """;
+
+        try (var connection = DriverManager.getConnection(databaseUrl(databaseName), POSTGRESQL.getUsername(), POSTGRESQL.getPassword());
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery(query)) {
+            while (resultSet.next()) {
+                columns.add(new ColumnState(
+                        resultSet.getString("column_name"),
+                        resultSet.getString("data_type"),
+                        resultSet.getString("is_nullable"),
+                        resultSet.getString("is_identity")
+                ));
+            }
+        }
+
+        return columns;
+    }
+
+    private static List<ColumnState> readUserColumns(String databaseName) throws SQLException {
+        return readColumns(databaseName, "app_user");
+    }
+
+    private static List<ColumnState> readColumns(String databaseName, String tableName) throws SQLException {
+        List<ColumnState> columns = new ArrayList<>();
+        String query = """
+                SELECT column_name, data_type, is_nullable, is_identity
+                FROM information_schema.columns
+                WHERE table_schema = 'public' AND table_name = '%s'
+                ORDER BY ordinal_position
+                """.formatted(tableName);
 
         try (var connection = DriverManager.getConnection(databaseUrl(databaseName), POSTGRESQL.getUsername(), POSTGRESQL.getPassword());
              Statement statement = connection.createStatement();

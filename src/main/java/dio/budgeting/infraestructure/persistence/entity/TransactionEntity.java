@@ -22,12 +22,16 @@ public class TransactionEntity {
     @Enumerated(EnumType.STRING)
     private Category category;
 
+    @Column(name = "owner_id")
+    private Long ownerId;
+
     public static TransactionEntity from(Transaction transaction) {
         return new TransactionEntity(
                 transaction.getId().id(),
                 transaction.getDescription(),
                 transaction.getAmount(),
-                transaction.getCategory()
+                transaction.getCategory(),
+                transaction.getOwnerId()
         );
     }
 
@@ -36,7 +40,8 @@ public class TransactionEntity {
                 new TransactionId(this.id),
                 this.description,
                 this.amount,
-                this.category
+                this.category,
+                this.ownerId
         );
     }
 }
