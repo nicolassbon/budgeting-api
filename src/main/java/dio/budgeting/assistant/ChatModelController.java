@@ -1,4 +1,4 @@
-package dio.budgeting;
+package dio.budgeting.assistant;
 
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,6 +17,12 @@ public class ChatModelController {
 
     @GetMapping("/chat-model")
     String chat(String prompt) {
-        return this.openAiChatModel.call(prompt);
+        AssistantInputValidator.validatePrompt(prompt);
+
+        try {
+            return this.openAiChatModel.call(prompt);
+        } catch (RuntimeException exception) {
+            throw new AssistantIntegrationException("Failed to complete the chat-model request", exception);
+        }
     }
 }

@@ -1,0 +1,11 @@
+package dio.budgeting.assistant;
+
+import org.springframework.core.io.Resource;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.multipart.MultipartFile;
+
+public interface TransactionAssistant {
+    ResponseEntity<Resource> transcribe(MultipartFile file);
+
+    TransactionDraft interpret(String prompt);
+}

@@ -1,10 +1,7 @@
-package dio.budgeting;
+package dio.budgeting.assistant;
 
 import org.springframework.ai.audio.tts.TextToSpeechModel;
-import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
-import org.springframework.http.ContentDisposition;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -23,17 +20,16 @@ public class TextToSpeechController {
 
     @PostMapping(value = "/sinthesize", produces = "audio/mp3")
     public ResponseEntity<Resource> sinthesize(@RequestBody SynthesizeRequest request) {
-        byte[] audio = textToSpeechModel.call(request.text);
+        AssistantInputValidator.validatePrompt(request.text);
 
-        ByteArrayResource resource = new ByteArrayResource(audio);
+        byte[] audio;
+        try {
+            audio = textToSpeechModel.call(request.text);
+        } catch (RuntimeException exception) {
+            throw new AssistantIntegrationException("Failed to synthesize the requested text", exception);
+        }
 
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION,
-                        ContentDisposition.attachment()
-                                .filename("audio.mp3")
-                                .build()
-                                .toString())
-                .body(resource);
+        return AssistantHttpResponses.mp3Attachment(audio);
     }
 
     record SynthesizeRequest(String text) {

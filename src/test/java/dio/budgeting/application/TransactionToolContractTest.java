@@ -8,6 +8,7 @@ import org.springframework.ai.tool.annotation.ToolParam;
 
 import java.lang.reflect.Parameter;
 import java.lang.reflect.RecordComponent;
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.function.Function;
@@ -40,6 +41,9 @@ class TransactionToolContractTest {
         assertToolParam(paramsByName, "description", "Descripción del gasto");
         assertToolParam(paramsByName, "amount", "Valor del gasto (en centavos)");
         assertToolParam(paramsByName, "category", "Categoria de una transacción");
+
+        Method factory = PersistTransactionInput.class.getDeclaredMethod("of", String.class, long.class, dio.budgeting.domain.Category.class);
+        assertThat(factory).isNotNull();
     }
 
     @Test
@@ -48,6 +52,11 @@ class TransactionToolContractTest {
                 .map(RecordComponent::getName)
                 .toList())
                 .containsExactly("id", "description", "category", "value");
+
+        assertThat(Arrays.stream(dio.budgeting.infraestructure.http.response.TransactionResponse.class.getRecordComponents())
+                .map(RecordComponent::getName)
+                .toList())
+                .containsExactly("id", "description", "category", "amount");
     }
 
     private static void assertToolParam(Map<String, Parameter> paramsByName, String fieldName, String description) {

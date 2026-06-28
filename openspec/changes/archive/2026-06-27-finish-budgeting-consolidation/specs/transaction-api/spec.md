@@ -1,10 +1,41 @@
-# Transaction API Specification
+# Delta for transaction-api
 
-## Purpose
+## ADDED Requirements
 
-Define the stable external contract for manual transaction creation/listing and transaction AI tool exposure during transaction-slice consolidation.
+### Requirement: Extract transaction AI orchestration behind a dedicated assistant seam
 
-## Requirements
+The system MUST keep `TransactionController` as a thin HTTP adapter for transaction AI endpoints while delegating transcription, prompt loading, tool registration, interpretation, and TTS orchestration to an assistant-focused component.
+
+#### Scenario: Preserve `/transactions/ai` behavior during extraction
+
+- GIVEN a multipart `file` request to `POST /transactions/ai`
+- WHEN the AI transaction flow is executed after consolidation
+- THEN the response SHALL remain `audio/mp3` with the existing attachment behavior
+- AND the flow SHALL still use `src/main/resources/prompts/system-message.st` and transaction tools
+
+#### Scenario: Preserve `/transactions/interpret` behavior during extraction
+
+- GIVEN a JSON body with `prompt` for `POST /transactions/interpret`
+- WHEN the interpretation flow is executed after consolidation
+- THEN the response SHALL keep `description`, `amount`, and `category` fields
+
+### Requirement: Prove consolidation with focused compatibility tests
+
+The system MUST include focused tests that characterize transaction AI endpoint compatibility and transaction service/tool contracts before and after consolidation.
+
+#### Scenario: Guard HTTP and tool compatibility with focused tests
+
+- GIVEN the consolidation change is implemented
+- WHEN the focused controller and service/tool tests run
+- THEN they SHALL verify stable endpoint shapes, tool names, and DTO field names
+
+#### Scenario: Avoid reliance on live-provider rewrites
+
+- GIVEN OpenAI-backed tests are environment-gated
+- WHEN compatibility for this change is verified
+- THEN the change SHALL rely on focused deterministic tests rather than expanding live-provider coverage
+
+## MODIFIED Requirements
 
 ### Requirement: Create transactions
 
@@ -68,36 +99,3 @@ The system MUST keep `POST /transactions/ai` and `POST /transactions/interpret` 
 - GIVEN existing clients call `POST /transactions/ai` or `POST /transactions/interpret`
 - WHEN the consolidation is released
 - THEN those paths SHALL remain available without renaming or moving
-
-### Requirement: Extract transaction AI orchestration behind a dedicated assistant seam
-
-The system MUST keep `TransactionController` as a thin HTTP adapter for transaction AI endpoints while delegating transcription, prompt loading, tool registration, interpretation, and TTS orchestration to an assistant-focused component.
-
-#### Scenario: Preserve `/transactions/ai` behavior during extraction
-
-- GIVEN a multipart `file` request to `POST /transactions/ai`
-- WHEN the AI transaction flow is executed after consolidation
-- THEN the response SHALL remain `audio/mp3` with the existing attachment behavior
-- AND the flow SHALL still use `src/main/resources/prompts/system-message.st` and transaction tools
-
-#### Scenario: Preserve `/transactions/interpret` behavior during extraction
-
-- GIVEN a JSON body with `prompt` for `POST /transactions/interpret`
-- WHEN the interpretation flow is executed after consolidation
-- THEN the response SHALL keep `description`, `amount`, and `category` fields
-
-### Requirement: Prove consolidation with focused compatibility tests
-
-The system MUST include focused tests that characterize transaction AI endpoint compatibility and transaction service/tool contracts before and after consolidation.
-
-#### Scenario: Guard HTTP and tool compatibility with focused tests
-
-- GIVEN the consolidation change is implemented
-- WHEN the focused controller and service/tool tests run
-- THEN they SHALL verify stable endpoint shapes, tool names, and DTO field names
-
-#### Scenario: Avoid reliance on live-provider rewrites
-
-- GIVEN OpenAI-backed tests are environment-gated
-- WHEN compatibility for this change is verified
-- THEN the change SHALL rely on focused deterministic tests rather than expanding live-provider coverage

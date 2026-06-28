@@ -1,21 +1,17 @@
 package dio.budgeting.infraestructure.http;
 
+import dio.budgeting.assistant.AssistantInputValidator;
+import dio.budgeting.assistant.TransactionAssistant;
+import dio.budgeting.assistant.TransactionDraft;
 import dio.budgeting.application.TransactionService;
 import dio.budgeting.domain.Category;
 import dio.budgeting.infraestructure.http.request.TransactionRequest;
 import dio.budgeting.infraestructure.http.response.TransactionResponse;
-import org.springframework.ai.audio.transcription.TranscriptionModel;
-import org.springframework.ai.audio.tts.TextToSpeechModel;
-import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.nio.charset.Charset;
 import java.util.List;
 
 @RestController
@@ -23,22 +19,12 @@ import java.util.List;
 public class TransactionController {
 
     private final TransactionService transactionService;
-    private final TranscriptionModel transcriptionModel;
-    private final ChatClient chatClient;
-    private final TextToSpeechModel textToSpeechModel;
+    private final TransactionAssistant transactionAssistant;
 
     public TransactionController(TransactionService transactionService,
-                                 TranscriptionModel transcriptionModel,
-                                 ChatClient.Builder chatClientBuilder,
-                                 @Value("classpath:/prompts/system-message.st") Resource systemPrompt,
-                                 TextToSpeechModel textToSpeechModel) throws IOException {
+                                 TransactionAssistant transactionAssistant) {
         this.transactionService = transactionService;
-        this.transcriptionModel = transcriptionModel;
-        this.chatClient = chatClientBuilder
-                .defaultSystem(systemPrompt.getContentAsString(Charset.defaultCharset()))
-                .defaultTools(transactionService)
-                .build();
-        this.textToSpeechModel = textToSpeechModel;
+        this.transactionAssistant = transactionAssistant;
     }
 
     @PostMapping
@@ -58,19 +44,15 @@ public class TransactionController {
 
     @PostMapping(value = "/ai", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = "audio/mp3")
     public ResponseEntity<Resource> transcribe(@RequestParam("file") MultipartFile file) {
-        var userMessage = transcriptionModel.transcribe(file.getResource());
+        AssistantInputValidator.validateAudioFile(file);
+        return transactionAssistant.transcribe(file);
+    }
 
-        var result = chatClient.prompt().user(userMessage).call().content();
+    public record InterpretRequest(String prompt) {}
 
-        byte[] audio = textToSpeechModel.call(result);
-        ByteArrayResource resource = new ByteArrayResource(audio);
-
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION,
-                        ContentDisposition.attachment()
-                                .filename("audio.mp3")
-                                .build()
-                                .toString())
-                .body(resource);
+    @PostMapping("/interpret")
+    public TransactionDraft interpret(@RequestBody InterpretRequest request) {
+        AssistantInputValidator.validatePrompt(request.prompt());
+        return transactionAssistant.interpret(request.prompt());
     }
 }

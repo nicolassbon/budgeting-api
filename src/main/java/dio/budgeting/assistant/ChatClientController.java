@@ -1,4 +1,4 @@
-package dio.budgeting;
+package dio.budgeting.assistant;
 
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,6 +17,12 @@ public class ChatClientController {
 
     @GetMapping("/chat-client")
     String chat(String prompt) {
-        return this.chatClient.prompt().user(prompt).call().content();
+        AssistantInputValidator.validatePrompt(prompt);
+
+        try {
+            return this.chatClient.prompt().user(prompt).call().content();
+        } catch (RuntimeException exception) {
+            throw new AssistantIntegrationException("Failed to complete the chat-client request", exception);
+        }
     }
 }

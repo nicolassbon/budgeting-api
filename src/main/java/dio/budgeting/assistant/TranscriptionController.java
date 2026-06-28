@@ -1,8 +1,7 @@
-package dio.budgeting;
+package dio.budgeting.assistant;
 
 
 import org.springframework.ai.audio.transcription.TranscriptionModel;
-import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -21,9 +20,13 @@ public class TranscriptionController {
 
     @PostMapping(value = "/transcribe", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public String transcribe(@RequestParam("file") MultipartFile file) {
-        Resource resource = file.getResource();
+        AssistantInputValidator.validateAudioFile(file);
 
-        return transcriptionModel.transcribe(resource);
+        try {
+            return transcriptionModel.transcribe(file.getResource());
+        } catch (RuntimeException exception) {
+            throw new AssistantIntegrationException("Failed to transcribe the provided audio", exception);
+        }
     }
 
 }
