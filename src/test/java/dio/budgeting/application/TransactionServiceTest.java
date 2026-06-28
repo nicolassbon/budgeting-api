@@ -1,7 +1,6 @@
 package dio.budgeting.application;
 
 import dio.budgeting.application.input.PersistTransactionInput;
-import dio.budgeting.application.security.AuthenticatedUserProvider;
 import dio.budgeting.domain.Category;
 import dio.budgeting.domain.Transaction;
 import dio.budgeting.domain.TransactionId;
