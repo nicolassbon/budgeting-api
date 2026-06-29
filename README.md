@@ -20,17 +20,36 @@ El proyecto **Budgeting** es una API REST diseñada para actuar como un asistent
 
 ## Arquitectura y Módulos de Código
 
-La aplicación parece seguir un patrón de arquitectura limpia / hexagonal, organizando el código dentro de `dio.budgeting`:
-*   `domain/`: Entidades core (`Transaction`, `TransactionId`), enums (`Category`) y abstracciones de repositorios (`TransactionRepository`).
-*   `application/`: Casos de uso de negocio que actúan como puente e interactúan con la IA como *Tools*.
-*   `infrastructure/http/`: Controladores REST (`TransactionController`, `ChatClientController`, `TranscriptionController`).
-*   `infrastructure/persistence/`: Implementación de repositorios apuntando a la base Postgres.
+La arquitectura oficial del MVP es **pragmatic Layered Architecture** con límites claros entre transporte, orquestación, reglas de negocio e integraciones.
+
+Como no-objetivo explícito para este desafío: **strict Hexagonal Architecture and full Clean Architecture are out of scope for this MVP**. La prioridad es mantener compatibilidad, claridad y velocidad de entrega sin agregar abstracciones que el MVP todavía no necesita.
+
+### Quick path
+
+*   Los controladores deben seguir siendo adapters finos de HTTP/transporte y no dueños de reglas de negocio.
+*   La lógica de casos de uso vive en `application/`.
+*   La persistencia, seguridad, IA y wiring de Spring quedan en los bordes de infraestructura.
+
+### Responsabilidades por capa
+
+*   `domain/`: core business models, invariants, and repository contracts.
+*   `application/`: use-case orchestration, transaction boundaries, and user-scoped operations.
+*   `infraestructure/`: HTTP, persistence, security, and framework adapters.
+*   `assistant/`: AI-facing orchestration owned by the infrastructure edge.
+*   `config/`: configuración de Spring Boot, seguridad y Flyway para sostener los límites anteriores.
+
+### Restricciones del MVP
+
+*   El paquete `infraestructure` mantiene ese spelling por compatibilidad y no se renombra en este cambio.
+*   La interpretación asistida por IA produce un borrador; persistir una transacción sigue siendo un paso explícito de confirmación del usuario. Cualquier refactor futuro del flujo IA debe preservar la confirmación antes del guardado como una regla obligatoria.
+*   Manual transaction creation remains available even if AI flows fail or are not used; manual editing is part of the target MVP scope but must be introduced through an explicit backend change.
 
 ## Endpoints Notables
 
 *   `POST /transactions`: Crea manualmente una transacción pasándole el esquema explícito de JSON.
 *   `GET /transactions/{category}`: Lista las transacciones guardadas que pertenezcan a la categoría especificada.
-*   `POST /transactions/ai`: Recibe una nota de voz vía `multipart/form-data`, transcribe el audio, lo manda al modelo AI, el cual ejecuta las tools automáticas y persiste la transacción.
+*   `POST /transactions/ai`: conserva el flujo asistido actual de transcripción, tool calling y respuesta de audio; para un borrador con confirmación previa usá `POST /transactions/interpret`.
+*   `POST /transactions/interpret`: Interpreta un prompt de texto y devuelve un `TransactionDraft` para revisión/confirmación antes de guardar.
 *   `POST /api/transcribe`: Endpoint simple de utilidad para testear la funcionalidad pura de transcripción subiendo un archivo.
 
 ## Base de datos y migraciones

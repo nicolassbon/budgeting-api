@@ -30,3 +30,6 @@ out/
 .env
 .env.*
 !.env.example
+
+### CodeGraph ###
+.codegraph

@@ -15,6 +15,10 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
+/**
+ * Infrastructure-owned AI orchestrator for transcription, prompt interpretation, and audio responses.
+ * The interpretation result is produced as a draft and must not persist data before user confirmation.
+ */
 @Component
 public class TransactionAssistantFacade implements TransactionAssistant {
 
