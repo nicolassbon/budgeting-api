@@ -39,7 +39,7 @@ class FlywayMigrationIT {
             assertThat(context.isActive()).isTrue();
         }
 
-        assertThat(readAppliedVersions(databaseName)).containsExactly("1", "2");
+        assertThat(readAppliedVersions(databaseName)).containsExactly("1", "2", "3");
         assertThat(readColumns(databaseName)).containsExactly(
                 new ColumnState("id", "bigint", "NO", "YES"),
                 new ColumnState("description", "character varying", "YES", "NO"),
@@ -60,7 +60,7 @@ class FlywayMigrationIT {
         String databaseName = createDatabase();
 
         try (ConfigurableApplicationContext ignored = startBudgetingApplication(databaseName)) {
-            assertThat(readAppliedVersions(databaseName)).containsExactly("1", "2");
+            assertThat(readAppliedVersions(databaseName)).containsExactly("1", "2", "3");
         }
 
         assertThatThrownBy(() -> startBudgetingApplication(
@@ -77,7 +77,7 @@ class FlywayMigrationIT {
         String databaseName = createDatabase();
 
         try (ConfigurableApplicationContext ignored = startBudgetingApplication(databaseName)) {
-            assertThat(readAppliedVersions(databaseName)).containsExactly("1", "2");
+            assertThat(readAppliedVersions(databaseName)).containsExactly("1", "2", "3");
         }
 
         assertThatThrownBy(() -> startSchemaValidationApplication(databaseName))

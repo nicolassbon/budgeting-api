@@ -22,7 +22,7 @@ import java.nio.charset.StandardCharsets;
 @Component
 public class TransactionAssistantFacade implements TransactionAssistant {
 
-    private static final String INTERPRETATION_SYSTEM_PROMPT = "Eres un asistente financiero. Tu tarea es extraer la información de gastos de un texto del usuario y estructurarla. Extrae la descripción, el monto numérico y la categoría más adecuada (GROCERIES, PHARMA, AUTO). Si algún campo no se puede inferir con certeza absoluta del texto, ponlo como null. Devolverás la estructura sin persistir ninguna transacción.";
+    private static final String INTERPRETATION_SYSTEM_PROMPT = "Eres un asistente financiero. Tu tarea es extraer la información de gastos de un texto del usuario y estructurarla. Extrae la descripción, el monto numérico y la categoría más adecuada (COMIDA, SUPERMERCADO, FARMACIA, ROPA, TRANSPORTE, VIVIENDA, HOGAR, SERVICIOS, ENTRETENIMIENTO, EDUCACION, SALUD, CUIDADO_PERSONAL, MASCOTAS, SUSCRIPCIONES, REGALOS, IMPUESTOS, DEUDAS, OTROS). Si algún campo no se puede inferir con certeza absoluta del texto, ponlo como null. Devolverás la estructura sin persistir ninguna transacción.";
     private static final Logger log = LoggerFactory.getLogger(TransactionAssistantFacade.class);
 
     private final TranscriptionModel transcriptionModel;

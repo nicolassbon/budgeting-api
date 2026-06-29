@@ -119,7 +119,7 @@ class AuthControllerTest {
     void shouldRejectAnonymousProtectedRequests() throws Exception {
         mockMvc.perform(get("/auth/me"))
                 .andExpect(status().isUnauthorized());
-        mockMvc.perform(get("/transactions/GROCERIES"))
+        mockMvc.perform(get("/transactions/COMIDA"))
                 .andExpect(status().isUnauthorized());
         mockMvc.perform(get("/api/chat-client").param("prompt", "hello"))
                 .andExpect(status().isUnauthorized());

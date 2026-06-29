@@ -4,7 +4,7 @@ El proyecto **Budgeting** es una API REST diseñada para actuar como un asistent
 
 ## Funcionalidades Principales
 
-*   **Gestión de Transacciones**: Permite registrar gastos con una descripción, monto y categoría predefinida (por ejemplo, `GROCERIES`, `PHARMA`, `AUTO`), así como listar transacciones filtrando por dichas categorías.
+*   **Gestión de Transacciones**: Permite registrar gastos con una descripción, monto y categoría predefinida (por ejemplo, `COMIDA`, `FARMACIA`, `ROPA`, `TRANSPORTE`), así como listar transacciones filtrando por dichas categorías.
 *   **Asistente Financiero Inteligente**: Utiliza modelos de procesamiento de lenguaje natural (LLMs) configurados con un prompt de sistema financiero. El asistente recibe órdenes simples del usuario (por ejemplo, "Anota 50 mil pesos en supermercado") y mapea automáticamente el monto, descripción y categoría adecuada.
 *   **Invocación de Herramientas (Tool Calling)**: Emplea *Tool Calling* a través de Spring AI para que los LLMs invoquen directamente los casos de uso internos de la aplicación (`PersistTransactionUseCase` y `ListTransactionsByCategoryUseCase`).
 *   **Transcripción de Audio**: Ofrece endpoints que aceptan archivos de audio (MP3, etc.), los transcriben utilizando modelos de reconocimiento de voz y, de manera combinada, proceden a analizarlos para ejecutar el registro de transacciones dictadas por voz.

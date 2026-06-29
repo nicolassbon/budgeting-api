@@ -169,7 +169,7 @@ class SecurityEndpointIntegrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.description").value(bobDescription));
 
-        String aliceList = mockMvc.perform(get("/transactions/GROCERIES")
+        String aliceList = mockMvc.perform(get("/transactions/COMIDA")
                         .session(aliceSession))
                 .andExpect(status().isOk())
                 .andReturn()
@@ -193,7 +193,7 @@ class SecurityEndpointIntegrationTest {
                         ContentDisposition.attachment().filename("audio.mp3").build().toString())
                 .body(new ByteArrayResource("transaction-audio".getBytes())));
         when(transactionAssistant.interpret("latte and bread"))
-                .thenReturn(new TransactionDraft("Coffee and bread", 2300L, Category.GROCERIES));
+                .thenReturn(new TransactionDraft("Coffee and bread", 2300L, Category.COMIDA));
 
         mockMvc.perform(get("/api/chat-client")
                         .session(session)
@@ -244,7 +244,7 @@ class SecurityEndpointIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.description").value("Coffee and bread"))
                 .andExpect(jsonPath("$.amount").value(2300))
-                .andExpect(jsonPath("$.category").value("GROCERIES"));
+                .andExpect(jsonPath("$.category").value("COMIDA"));
     }
 
     private MockHttpSession registerAndLogin(String email) throws Exception {
@@ -285,7 +285,7 @@ class SecurityEndpointIntegrationTest {
         return """
                 {
                   "description": "%s",
-                  "category": "GROCERIES",
+                  "category": "COMIDA",
                   "amount": 1250
                 }
                 """.formatted(description);

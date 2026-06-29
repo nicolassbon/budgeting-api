@@ -1,7 +1,22 @@
 package dio.budgeting.domain;
 
 public enum Category {
-    GROCERIES,
-    PHARMA,
-    AUTO
+    COMIDA,
+    SUPERMERCADO,
+    FARMACIA,
+    ROPA,
+    TRANSPORTE,
+    VIVIENDA,
+    HOGAR,
+    SERVICIOS,
+    ENTRETENIMIENTO,
+    EDUCACION,
+    SALUD,
+    CUIDADO_PERSONAL,
+    MASCOTAS,
+    SUSCRIPCIONES,
+    REGALOS,
+    IMPUESTOS,
+    DEUDAS,
+    OTROS
 }

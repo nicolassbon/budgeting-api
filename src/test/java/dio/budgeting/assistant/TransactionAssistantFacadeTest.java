@@ -26,6 +26,8 @@ import static org.mockito.Mockito.when;
 
 class TransactionAssistantFacadeTest {
 
+    private static final String EXPECTED_INTERPRETATION_PROMPT = "Eres un asistente financiero. Tu tarea es extraer la información de gastos de un texto del usuario y estructurarla. Extrae la descripción, el monto numérico y la categoría más adecuada (COMIDA, SUPERMERCADO, FARMACIA, ROPA, TRANSPORTE, VIVIENDA, HOGAR, SERVICIOS, ENTRETENIMIENTO, EDUCACION, SALUD, CUIDADO_PERSONAL, MASCOTAS, SUSCRIPCIONES, REGALOS, IMPUESTOS, DEUDAS, OTROS). Si algún campo no se puede inferir con certeza absoluta del texto, ponlo como null. Devolverás la estructura sin persistir ninguna transacción.";
+
     private TransactionService transactionService;
     private TranscriptionModel transcriptionModel;
     private TextToSpeechModel textToSpeechModel;
@@ -100,7 +102,7 @@ class TransactionAssistantFacadeTest {
 
     @Test
     void shouldOrchestrateInterpretationWithASeparatePromptClient() throws Exception {
-        TransactionDraft draft = new TransactionDraft("Coffee and bread", 2300L, Category.GROCERIES);
+        TransactionDraft draft = new TransactionDraft("Coffee and bread", 2300L, Category.COMIDA);
 
         when(interpretationChatClient.prompt().user("latte and bread").call().entity(TransactionDraft.class)).thenReturn(draft);
 
@@ -109,7 +111,8 @@ class TransactionAssistantFacadeTest {
 
         assertThat(result.description()).isEqualTo("Coffee and bread");
         assertThat(result.amount()).isEqualTo(2300L);
-        assertThat(result.category()).isEqualTo(Category.GROCERIES);
+        assertThat(result.category()).isEqualTo(Category.COMIDA);
+        verify(chatClientBuilder).defaultSystem(EXPECTED_INTERPRETATION_PROMPT);
     }
 
     @Test

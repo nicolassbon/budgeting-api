@@ -44,7 +44,7 @@ class TransactionControllerTest {
                         .body(new ByteArrayResource("audio-bytes".getBytes()))
         );
         when(transactionAssistant.interpret("latte and bread"))
-                .thenReturn(new TransactionDraft("Coffee and bread", 2300L, Category.GROCERIES));
+                .thenReturn(new TransactionDraft("Coffee and bread", 2300L, Category.COMIDA));
 
         var controller = new TransactionController(transactionService, transactionAssistant);
 
@@ -58,45 +58,45 @@ class TransactionControllerTest {
         when(transactionService.create(new dio.budgeting.application.input.PersistTransactionInput(
                 "Supermarket",
                 1250L,
-                Category.GROCERIES
-        ))).thenReturn(new TransactionOutput("1", "Supermarket", "GROCERIES", 1250.0));
+                Category.COMIDA
+        ))).thenReturn(new TransactionOutput("1", "Supermarket", "COMIDA", 1250.0));
 
         mockMvc.perform(post("/transactions")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
                                   "description": "Supermarket",
-                                  "category": "GROCERIES",
+                                  "category": "COMIDA",
                                   "amount": 1250
                                 }
                                 """))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value("1"))
                 .andExpect(jsonPath("$.description").value("Supermarket"))
-                .andExpect(jsonPath("$.category").value("GROCERIES"))
+                .andExpect(jsonPath("$.category").value("COMIDA"))
                 .andExpect(jsonPath("$.amount").value(1250.0));
     }
 
     @Test
     void shouldReturnEmptyListForCategoryWithoutChangingResponseShape() throws Exception {
-        when(transactionService.findAllByCategory(Category.PHARMA)).thenReturn(List.of());
+        when(transactionService.findAllByCategory(Category.FARMACIA)).thenReturn(List.of());
 
-        mockMvc.perform(get("/transactions/{category}", Category.PHARMA))
+        mockMvc.perform(get("/transactions/{category}", Category.FARMACIA))
                 .andExpect(status().isOk())
                 .andExpect(content().json("[]"));
     }
 
     @Test
     void shouldListTransactionsWithStableHttpContract() throws Exception {
-        when(transactionService.findAllByCategory(Category.PHARMA)).thenReturn(List.of(
-                new TransactionOutput("10", "Pharmacy", "PHARMA", 450.0)
+        when(transactionService.findAllByCategory(Category.FARMACIA)).thenReturn(List.of(
+                new TransactionOutput("10", "Pharmacy", "FARMACIA", 450.0)
         ));
 
-        mockMvc.perform(get("/transactions/{category}", Category.PHARMA))
+        mockMvc.perform(get("/transactions/{category}", Category.FARMACIA))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value("10"))
                 .andExpect(jsonPath("$[0].description").value("Pharmacy"))
-                .andExpect(jsonPath("$[0].category").value("PHARMA"))
+                .andExpect(jsonPath("$[0].category").value("FARMACIA"))
                 .andExpect(jsonPath("$[0].amount").value(450.0));
     }
 
@@ -120,7 +120,7 @@ class TransactionControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.description").value("Coffee and bread"))
                 .andExpect(jsonPath("$.amount").value(2300))
-                .andExpect(jsonPath("$.category").value("GROCERIES"));
+                .andExpect(jsonPath("$.category").value("COMIDA"));
 
         verifyNoInteractions(transactionService);
     }
