@@ -57,6 +57,52 @@ class TransactionServiceTest {
     }
 
     @Test
+    void shouldUpdateScopedTransactionAndPreserveExistingOccurredAtWhenDateIsMissing() {
+        var repository = new FakeTransactionRepository();
+        repository.transactionToFind = Optional.of(
+                new Transaction(
+                        new TransactionId(10L),
+                        "Old grocery",
+                        1250L,
+                        Category.COMIDA,
+                        42L,
+                        Instant.parse("2026-03-05T10:00:00Z")
+                )
+        );
+        var service = new TransactionService(repository, () -> 42L);
+
+        var output = service.update(10L, new PersistTransactionInput("New grocery", 2500L, Category.FARMACIA, null));
+
+        assertThat(repository.findById()).isEqualTo(new TransactionId(10L));
+        assertThat(repository.findByOwnerId()).isEqualTo(42L);
+        assertThat(repository.savedTransaction().getId().id()).isEqualTo(10L);
+        assertThat(repository.savedTransaction().getDescription()).isEqualTo("New grocery");
+        assertThat(repository.savedTransaction().getAmount()).isEqualTo(2500L);
+        assertThat(repository.savedTransaction().getCategory()).isEqualTo(Category.FARMACIA);
+        assertThat(repository.savedTransaction().getOccurredAt()).isEqualTo(Instant.parse("2026-03-05T10:00:00Z"));
+        assertThat(output.id()).isEqualTo("10");
+        assertThat(output.description()).isEqualTo("New grocery");
+        assertThat(output.category()).isEqualTo("FARMACIA");
+        assertThat(output.value()).isEqualTo(2500.0);
+        assertThat(output.date()).isEqualTo(Instant.parse("2026-03-05T10:00:00Z"));
+    }
+
+    @Test
+    void shouldRejectUpdateWhenTransactionDoesNotBelongToAuthenticatedOwner() {
+        var repository = new FakeTransactionRepository();
+        var service = new TransactionService(repository, () -> 42L);
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(
+                () -> service.update(99L, new PersistTransactionInput("Missing", 100L, Category.COMIDA, null))
+        )
+                .isInstanceOf(TransactionNotFoundException.class)
+                .hasMessage("Transaction not found: 99");
+
+        assertThat(repository.findById()).isEqualTo(new TransactionId(99L));
+        assertThat(repository.findByOwnerId()).isEqualTo(42L);
+    }
+
+    @Test
     void shouldListTransactionsByCategoryByDelegatingToRepositoryAndMappingOutput() {
         var repository = new FakeTransactionRepository();
         repository.transactionsToReturn = List.of(
@@ -158,23 +204,36 @@ class TransactionServiceTest {
 
     private static final class FakeTransactionRepository implements TransactionRepository {
         private Transaction savedTransaction;
+        private TransactionId findById;
+        private Long findByOwnerId;
         private Category requestedCategory;
         private Long requestedOwnerId;
         private List<Transaction> transactionsToReturn = List.of();
+        private Optional<Transaction> transactionToFind = Optional.empty();
         private List<TransactionHistoryEntry> historyToReturn = List.of();
         private TransactionHistoryCriteria lastHistoryFilters;
 
         @Override
         public Transaction save(Transaction transaction) {
             savedTransaction = transaction;
+            TransactionId persistedId = transaction.getId() != null && transaction.getId().id() != null
+                    ? transaction.getId()
+                    : new TransactionId(99L);
             return new Transaction(
-                    new TransactionId(99L),
+                    persistedId,
                     transaction.getDescription(),
                     transaction.getAmount(),
                     transaction.getCategory(),
                     transaction.getOwnerId(),
                     transaction.getOccurredAt()
             );
+        }
+
+        @Override
+        public Optional<Transaction> findByIdAndOwnerId(TransactionId id, Long ownerId) {
+            this.findById = id;
+            this.findByOwnerId = ownerId;
+            return transactionToFind;
         }
 
         @Override
@@ -201,6 +260,14 @@ class TransactionServiceTest {
 
         private Category requestedCategory() {
             return requestedCategory;
+        }
+
+        private TransactionId findById() {
+            return findById;
+        }
+
+        private Long findByOwnerId() {
+            return findByOwnerId;
         }
 
         private Long requestedOwnerId() {

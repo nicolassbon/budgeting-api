@@ -5,6 +5,7 @@ import dio.budgeting.assistant.AssistantExceptionHandler;
 import dio.budgeting.assistant.AssistantIntegrationException;
 import dio.budgeting.assistant.TransactionDraft;
 import dio.budgeting.application.TransactionService;
+import dio.budgeting.application.TransactionNotFoundException;
 import dio.budgeting.application.input.PersistTransactionInput;
 import dio.budgeting.application.input.TransactionHistoryFilters;
 import dio.budgeting.application.output.TransactionHistoryResponse;
@@ -34,6 +35,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -117,6 +119,54 @@ class TransactionControllerTest {
                 .andExpect(jsonPath("$.category").value("FARMACIA"))
                 .andExpect(jsonPath("$.amount").value(4.50))
                 .andExpect(jsonPath("$.date").value("2026-03-15T10:00:00Z"));
+    }
+
+    @Test
+    void shouldUpdateTransactionWithStableHttpContract() throws Exception {
+        when(transactionService.update(2L, new PersistTransactionInput(
+                "Pharmacy updated",
+                450L,
+                Category.FARMACIA,
+                FIXED_DATE
+        ))).thenReturn(new TransactionOutput("2", "Pharmacy updated", "FARMACIA", 450.0, FIXED_DATE));
+
+        mockMvc.perform(put("/transactions/2")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "description": "Pharmacy updated",
+                                  "category": "FARMACIA",
+                                  "amount": 450,
+                                  "date": "2026-03-15T10:00:00Z"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value("2"))
+                .andExpect(jsonPath("$.description").value("Pharmacy updated"))
+                .andExpect(jsonPath("$.category").value("FARMACIA"))
+                .andExpect(jsonPath("$.amount").value(450.0))
+                .andExpect(jsonPath("$.date").value("2026-03-15T10:00:00Z"));
+    }
+
+    @Test
+    void shouldReturnNotFoundWhenUpdatingMissingTransaction() throws Exception {
+        when(transactionService.update(99L, new PersistTransactionInput(
+                "Missing",
+                100L,
+                Category.COMIDA,
+                null
+        ))).thenThrow(new TransactionNotFoundException(99L));
+
+        mockMvc.perform(put("/transactions/99")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "description": "Missing",
+                                  "category": "COMIDA",
+                                  "amount": 100
+                                }
+                                """))
+                .andExpect(status().isNotFound());
     }
 
     @Test

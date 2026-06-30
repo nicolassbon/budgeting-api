@@ -6,6 +6,7 @@ import dio.budgeting.domain.DashboardAggregate;
 import dio.budgeting.domain.Transaction;
 import dio.budgeting.domain.TransactionHistoryCriteria;
 import dio.budgeting.domain.TransactionHistoryEntry;
+import dio.budgeting.domain.TransactionId;
 import dio.budgeting.domain.TransactionRepository;
 import org.junit.jupiter.api.Test;
 
@@ -15,6 +16,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
@@ -91,6 +93,11 @@ class DashboardServiceTest {
         @Override
         public Transaction save(Transaction transaction) {
             return transaction;
+        }
+
+        @Override
+        public Optional<Transaction> findByIdAndOwnerId(TransactionId id, Long ownerId) {
+            return Optional.empty();
         }
 
         @Override

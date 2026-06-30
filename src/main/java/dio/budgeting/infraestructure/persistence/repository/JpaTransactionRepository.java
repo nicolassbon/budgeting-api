@@ -5,12 +5,14 @@ import dio.budgeting.domain.DashboardAggregate;
 import dio.budgeting.domain.Transaction;
 import dio.budgeting.domain.TransactionHistoryCriteria;
 import dio.budgeting.domain.TransactionHistoryEntry;
+import dio.budgeting.domain.TransactionId;
 import dio.budgeting.domain.TransactionRepository;
 import dio.budgeting.infraestructure.persistence.entity.TransactionEntity;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public class JpaTransactionRepository implements TransactionRepository {
@@ -24,6 +26,12 @@ public class JpaTransactionRepository implements TransactionRepository {
     public Transaction save(Transaction transaction) {
         TransactionEntity entity = TransactionEntity.from(transaction);
         return transactionEntityRepository.save(entity).toDomain();
+    }
+
+    @Override
+    public Optional<Transaction> findByIdAndOwnerId(TransactionId id, Long ownerId) {
+        return transactionEntityRepository.findByIdAndOwnerId(id.id(), ownerId)
+                .map(TransactionEntity::toDomain);
     }
 
     @Override

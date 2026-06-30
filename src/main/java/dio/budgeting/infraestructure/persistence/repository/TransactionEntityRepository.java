@@ -10,8 +10,11 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 public interface TransactionEntityRepository extends CrudRepository<TransactionEntity, Long> {
+
+    Optional<TransactionEntity> findByIdAndOwnerId(Long id, Long ownerId);
 
     List<TransactionEntity> findAllByCategoryAndOwnerId(Category category, Long ownerId);
 

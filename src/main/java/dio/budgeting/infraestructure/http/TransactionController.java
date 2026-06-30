@@ -40,6 +40,12 @@ public class TransactionController {
         return TransactionResponse.from(transaction);
     }
 
+    @PutMapping("/{id}")
+    public TransactionResponse updateTransaction(@PathVariable Long id, @RequestBody TransactionRequest request) {
+        var transaction = transactionService.update(id, request.toInput());
+        return TransactionResponse.from(transaction);
+    }
+
     @GetMapping
     public TransactionHistoryHttpResponse findHistory(
             @RequestParam(value = "from", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,

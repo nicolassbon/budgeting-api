@@ -9,6 +9,7 @@ import dio.budgeting.domain.Category;
 import dio.budgeting.domain.Transaction;
 import dio.budgeting.domain.TransactionHistoryEntry;
 import dio.budgeting.domain.TransactionHistoryCriteria;
+import dio.budgeting.domain.TransactionId;
 import dio.budgeting.domain.TransactionRepository;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
@@ -37,6 +38,27 @@ public class TransactionService {
                 new Transaction(input.description(), input.amount(), input.category(), ownerId, occurredAt)
         );
         return TransactionOutput.from(transaction);
+    }
+
+    public TransactionOutput update(Long transactionId, PersistTransactionInput input) {
+        Long ownerId = authenticatedUserProvider.requireCurrentUserId();
+        TransactionId id = new TransactionId(transactionId);
+        Transaction current = transactionRepository.findByIdAndOwnerId(id, ownerId)
+                .orElseThrow(() -> new TransactionNotFoundException(transactionId));
+        Instant occurredAt = input.occurredAt() != null ? input.occurredAt() : current.getOccurredAt();
+
+        var updated = transactionRepository.save(
+                new Transaction(
+                        id,
+                        input.description(),
+                        input.amount(),
+                        input.category(),
+                        ownerId,
+                        occurredAt
+                )
+        );
+
+        return TransactionOutput.from(updated);
     }
 
     @Tool(name = "list-transactions-by-category", description = "Lista transacciones financieras por categoría")
