@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -77,18 +78,18 @@ class AuthControllerTest {
 
         var session = login.getRequest().getSession(false);
 
-        mockMvc.perform(get("/auth/me").session((org.springframework.mock.web.MockHttpSession) session))
+        mockMvc.perform(get("/auth/me").session((MockHttpSession) session))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value(email));
 
         mockMvc.perform(post("/auth/logout")
                         .with(csrf())
-                        .session((org.springframework.mock.web.MockHttpSession) session))
+                        .session((MockHttpSession) session))
                 .andExpect(status().isNoContent());
 
-        mockMvc.perform(get("/auth/me").session((org.springframework.mock.web.MockHttpSession) session))
+        mockMvc.perform(get("/auth/me").session((MockHttpSession) session))
                 .andExpect(status().isUnauthorized());
-    }
+}
 
     @Test
     void shouldRejectDuplicateEmailAndBadCredentials() throws Exception {

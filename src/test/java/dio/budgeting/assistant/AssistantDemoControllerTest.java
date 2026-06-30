@@ -3,6 +3,7 @@ package dio.budgeting.assistant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Answers;
+import org.mockito.ArgumentMatchers;
 import org.springframework.ai.audio.tts.TextToSpeechModel;
 import org.springframework.ai.audio.transcription.TranscriptionModel;
 import org.springframework.ai.chat.client.ChatClient;
@@ -34,7 +35,7 @@ class AssistantDemoControllerTest {
         when(openAiChatModel.call("hello")).thenReturn("chat-model-response");
 
         TranscriptionModel transcriptionModel = mock(TranscriptionModel.class);
-        when(transcriptionModel.transcribe(org.mockito.ArgumentMatchers.any()))
+        when(transcriptionModel.transcribe(ArgumentMatchers.any()))
                 .thenReturn("transcribed-text");
 
         TextToSpeechModel textToSpeechModel = mock(TextToSpeechModel.class);

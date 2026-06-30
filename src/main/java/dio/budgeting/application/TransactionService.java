@@ -1,15 +1,20 @@
 package dio.budgeting.application;
 
 import dio.budgeting.application.input.PersistTransactionInput;
+import dio.budgeting.application.input.TransactionHistoryFilters;
+import dio.budgeting.application.output.TransactionHistoryResponse;
 import dio.budgeting.application.output.TransactionOutput;
 import dio.budgeting.application.security.AuthenticatedUserProvider;
 import dio.budgeting.domain.Category;
 import dio.budgeting.domain.Transaction;
+import dio.budgeting.domain.TransactionHistoryEntry;
+import dio.budgeting.domain.TransactionHistoryCriteria;
 import dio.budgeting.domain.TransactionRepository;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.List;
 
 @Service
@@ -27,7 +32,10 @@ public class TransactionService {
     @Tool(name = "persist-transaction", description = "Persiste una nueva transacción financiera")
     public TransactionOutput create(PersistTransactionInput input) {
         Long ownerId = authenticatedUserProvider.requireCurrentUserId();
-        var transaction = transactionRepository.save(new Transaction(input.description(), input.amount(), input.category(), ownerId));
+        Instant occurredAt = input.occurredAt() != null ? input.occurredAt() : Instant.now();
+        var transaction = transactionRepository.save(
+                new Transaction(input.description(), input.amount(), input.category(), ownerId, occurredAt)
+        );
         return TransactionOutput.from(transaction);
     }
 
@@ -38,5 +46,37 @@ public class TransactionService {
                 .stream()
                 .map(TransactionOutput::from)
                 .toList();
+    }
+
+    public TransactionHistoryResponse findHistory(TransactionHistoryFilters filters) {
+        Long ownerId = authenticatedUserProvider.requireCurrentUserId();
+        var scopedCriteria = new TransactionHistoryCriteria(
+                ownerId,
+                filters.from(),
+                filters.to(),
+                filters.category()
+        );
+        var entries = transactionRepository.findHistory(scopedCriteria);
+        List<TransactionOutput> items = entries.stream()
+                .map(TransactionService::toOutput)
+                .toList();
+
+        long totalAmountCents = entries.stream()
+                .mapToLong(TransactionHistoryEntry::amount)
+                .sum();
+        double totalAmount = (double) totalAmountCents;
+        long transactionCount = items.size();
+
+        return new TransactionHistoryResponse(items, totalAmountCents, totalAmount, transactionCount);
+    }
+
+    private static TransactionOutput toOutput(TransactionHistoryEntry entry) {
+        return new TransactionOutput(
+                entry.id().id().toString(),
+                entry.description(),
+                entry.category().name(),
+                (double) entry.amount(),
+                entry.occurredAt()
+        );
     }
 }

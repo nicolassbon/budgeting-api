@@ -4,15 +4,21 @@ import dio.budgeting.assistant.AssistantInputValidator;
 import dio.budgeting.assistant.TransactionAssistant;
 import dio.budgeting.assistant.TransactionDraft;
 import dio.budgeting.application.TransactionService;
+import dio.budgeting.application.input.TransactionHistoryFilters;
 import dio.budgeting.domain.Category;
 import dio.budgeting.infraestructure.http.request.TransactionRequest;
+import dio.budgeting.infraestructure.http.response.TransactionHistoryHttpResponse;
 import dio.budgeting.infraestructure.http.response.TransactionResponse;
 import org.springframework.core.io.Resource;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/transactions")
@@ -32,6 +38,19 @@ public class TransactionController {
     public TransactionResponse createTransaction(@RequestBody TransactionRequest request) {
         var transaction = transactionService.create(request.toInput());
         return TransactionResponse.from(transaction);
+    }
+
+    @GetMapping
+    public TransactionHistoryHttpResponse findHistory(
+            @RequestParam(value = "from", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(value = "to", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(value = "category", required = false) Category category) {
+        var filters = new TransactionHistoryFilters(
+                Optional.ofNullable(from).map(localDate -> localDate.atStartOfDay(ZoneOffset.UTC).toInstant()),
+                Optional.ofNullable(to).map(localDate -> localDate.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant()),
+                Optional.ofNullable(category)
+        );
+        return TransactionHistoryHttpResponse.from(transactionService.findHistory(filters));
     }
 
     @GetMapping("/{category}")

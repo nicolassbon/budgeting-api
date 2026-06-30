@@ -10,6 +10,7 @@ import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -53,7 +54,7 @@ public class SecurityConfig {
     @Bean
     UserDetailsService userDetailsService(UserRepository userRepository) {
         return email -> userRepository.findByEmail(email)
-                .map(user -> org.springframework.security.core.userdetails.User
+                .map(user -> User
                         .withUsername(user.email())
                         .password(user.password())
                         .authorities("ROLE_" + user.role().name())

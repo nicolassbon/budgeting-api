@@ -39,13 +39,14 @@ class FlywayMigrationIT {
             assertThat(context.isActive()).isTrue();
         }
 
-        assertThat(readAppliedVersions(databaseName)).containsExactly("1", "2", "3");
+        assertThat(readAppliedVersions(databaseName)).containsExactly("1", "2", "3", "4");
         assertThat(readColumns(databaseName)).containsExactly(
                 new ColumnState("id", "bigint", "NO", "YES"),
                 new ColumnState("description", "character varying", "YES", "NO"),
                 new ColumnState("amount", "bigint", "NO", "NO"),
                 new ColumnState("category", "character varying", "YES", "NO"),
-                new ColumnState("owner_id", "bigint", "YES", "NO")
+                new ColumnState("owner_id", "bigint", "YES", "NO"),
+                new ColumnState("occurred_at", "timestamp with time zone", "NO", "NO")
         );
         assertThat(readUserColumns(databaseName)).containsExactly(
                 new ColumnState("id", "bigint", "NO", "YES"),
@@ -60,7 +61,7 @@ class FlywayMigrationIT {
         String databaseName = createDatabase();
 
         try (ConfigurableApplicationContext ignored = startBudgetingApplication(databaseName)) {
-            assertThat(readAppliedVersions(databaseName)).containsExactly("1", "2", "3");
+            assertThat(readAppliedVersions(databaseName)).containsExactly("1", "2", "3", "4");
         }
 
         assertThatThrownBy(() -> startBudgetingApplication(
@@ -77,7 +78,7 @@ class FlywayMigrationIT {
         String databaseName = createDatabase();
 
         try (ConfigurableApplicationContext ignored = startBudgetingApplication(databaseName)) {
-            assertThat(readAppliedVersions(databaseName)).containsExactly("1", "2", "3");
+            assertThat(readAppliedVersions(databaseName)).containsExactly("1", "2", "3", "4");
         }
 
         assertThatThrownBy(() -> startSchemaValidationApplication(databaseName))

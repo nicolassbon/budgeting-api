@@ -19,6 +19,7 @@ import org.springframework.mock.web.MockMultipartFile;
 import java.nio.charset.StandardCharsets;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -119,7 +120,7 @@ class TransactionAssistantFacadeTest {
     void shouldRejectInvalidAudioInputBeforeCallingAiModels() throws Exception {
         TransactionAssistantFacade facade = newFacade();
 
-        org.assertj.core.api.Assertions.assertThatThrownBy(() -> facade.transcribe(new MockMultipartFile(
+        assertThatThrownBy(() -> facade.transcribe(new MockMultipartFile(
                         "file",
                         "notes.txt",
                         "text/plain",
@@ -135,7 +136,7 @@ class TransactionAssistantFacadeTest {
 
         TransactionAssistantFacade facade = newFacade();
 
-        org.assertj.core.api.Assertions.assertThatThrownBy(() -> facade.transcribe(new MockMultipartFile(
+        assertThatThrownBy(() -> facade.transcribe(new MockMultipartFile(
                         "file",
                         "audio.wav",
                         "audio/wav",
@@ -150,7 +151,7 @@ class TransactionAssistantFacadeTest {
     void shouldRejectBlankInterpretPrompt() throws Exception {
         TransactionAssistantFacade facade = newFacade();
 
-        org.assertj.core.api.Assertions.assertThatThrownBy(() -> facade.interpret("   "))
+        assertThatThrownBy(() -> facade.interpret("   "))
                 .isInstanceOf(AssistantValidationException.class)
                 .hasMessage("Prompt must not be blank");
     }
