@@ -33,6 +33,11 @@
 - Transaction logic lives under the layered slice `dio.budgeting.{domain,application,infraestructure,config}`.
 - `infraestructure` is intentionally misspelled in package names. Do **not** rename it casually; that is a dedicated refactor.
 
+## Java style
+
+- Prefer explicit imports at the top of the file. Do **not** use inline fully-qualified class names in method bodies, lambdas, assertions, or builders when a normal import can express the dependency clearly.
+- Static helpers used repeatedly in tests, such as AssertJ assertions, should be imported statically at the top instead of referenced with fully-qualified names inline.
+
 ## Persistence and migrations
 
 - JPA runs with `spring.jpa.hibernate.ddl-auto=validate`. If you add or change persistence fields, add the Flyway migration in the same change or startup will fail.
