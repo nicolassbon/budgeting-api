@@ -197,6 +197,30 @@ class TransactionAssistantFacadeTest {
     }
 
     @Test
+    void shouldNormalizeSingleArgentineDotAmountReturnedInPesosToCentavos() throws Exception {
+        when(interpretationChatClient.prompt().user("Gasté 100.000 pesos en ropa").call().entity(InterpretationPayload.class))
+                .thenReturn(new InterpretationPayload(null, "Ropa", 100_000L, Category.ROPA));
+
+        InterpretationResult result = newFacade().interpret("Gasté 100.000 pesos en ropa");
+
+        assertThat(result.status()).isEqualTo(InterpretationStatus.OK);
+        assertThat(result.amount()).isEqualTo(10_000_000L);
+        assertThat(result.category()).isEqualTo(Category.ROPA);
+    }
+
+    @Test
+    void shouldNormalizeSingleArgentineCommaAmountReturnedInPesosToCentavos() throws Exception {
+        when(interpretationChatClient.prompt().user("Gasté $100,000 en ropa").call().entity(InterpretationPayload.class))
+                .thenReturn(new InterpretationPayload(null, "Ropa", 100_000L, Category.ROPA));
+
+        InterpretationResult result = newFacade().interpret("Gasté $100,000 en ropa");
+
+        assertThat(result.status()).isEqualTo(InterpretationStatus.OK);
+        assertThat(result.amount()).isEqualTo(10_000_000L);
+        assertThat(result.category()).isEqualTo(Category.ROPA);
+    }
+
+    @Test
     void shouldWrapInterpretationTimeoutsAsAssistantTimeout() throws Exception {
         when(interpretationChatClient.prompt().user("latte and bread").call().entity(InterpretationPayload.class))
                 .thenThrow(new RuntimeException(new TimeoutException("provider timeout with secret prompt")));
