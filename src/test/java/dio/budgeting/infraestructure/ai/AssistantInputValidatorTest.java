@@ -37,9 +37,24 @@ class AssistantInputValidatorTest {
 
     @Test
     void shouldRespectConfiguredMinimumLength() {
-        assertThatThrownBy(() -> AssistantInputValidator.validatePrompt("abc", 4))
+        assertThatThrownBy(() -> AssistantInputValidator.validatePrompt("abc", 4, 10))
                 .isInstanceOf(AssistantValidationException.class)
                 .hasMessageContaining("at least 4");
+    }
+
+    @Test
+    void shouldRespectConfiguredMaximumLength() {
+        assertThatThrownBy(() -> AssistantInputValidator.validatePrompt("abcdef", 3, 5))
+                .isInstanceOf(AssistantValidationException.class)
+                .hasMessage("Prompt exceeds the 5 character limit");
+    }
+
+    @Test
+    void shouldAcceptPromptThatExceedsOldHardcodedMaximumWhenConfiguredHigher() {
+        String prompt = "a".repeat(4_001);
+
+        assertThatCode(() -> AssistantInputValidator.validatePrompt(prompt, 3, 4_001))
+                .doesNotThrowAnyException();
     }
 
     @Test

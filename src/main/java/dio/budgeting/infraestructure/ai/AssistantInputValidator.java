@@ -1,5 +1,6 @@
 package dio.budgeting.infraestructure.ai;
 
+import dio.budgeting.config.InterpretProperties;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -7,10 +8,7 @@ import java.util.Locale;
 
 public final class AssistantInputValidator {
 
-    static final int DEFAULT_MIN_PROMPT_LENGTH = 3;
-
     private static final long MAX_AUDIO_BYTES = 10 * 1024 * 1024;
-    private static final int MAX_PROMPT_LENGTH = 4_000;
     private static final List<String> INJECTION_MARKERS = List.of(
             "ignore previous instructions",
             "system prompt",
@@ -41,16 +39,20 @@ public final class AssistantInputValidator {
     }
 
     public static void validatePrompt(String prompt) {
-        validatePrompt(prompt, DEFAULT_MIN_PROMPT_LENGTH);
+        validatePrompt(prompt, InterpretProperties.DEFAULT_MIN_PROMPT_LENGTH, InterpretProperties.DEFAULT_MAX_PROMPT_LENGTH);
     }
 
     public static void validatePrompt(String prompt, int minPromptLength) {
+        validatePrompt(prompt, minPromptLength, InterpretProperties.DEFAULT_MAX_PROMPT_LENGTH);
+    }
+
+    public static void validatePrompt(String prompt, int minPromptLength, int maxPromptLength) {
         if (prompt == null || prompt.isBlank()) {
             throw new AssistantValidationException("Prompt must not be blank");
         }
 
-        if (prompt.length() > MAX_PROMPT_LENGTH) {
-            throw new AssistantValidationException("Prompt exceeds the 4000 character limit");
+        if (prompt.length() > maxPromptLength) {
+            throw new AssistantValidationException("Prompt exceeds the %d character limit".formatted(maxPromptLength));
         }
 
         String trimmed = prompt.trim();

@@ -64,7 +64,13 @@ class TransactionControllerTest {
     private final TransactionAssistant transactionAssistant = mock(TransactionAssistant.class);
     private final AiInterpretRateLimiter aiInterpretRateLimiter = mock(AiInterpretRateLimiter.class);
     private final AuthenticatedUserProvider authenticatedUserProvider = mock(AuthenticatedUserProvider.class);
-    private final InterpretProperties interpretProperties = new InterpretProperties(new InterpretProperties.RateLimit(2), Duration.ofSeconds(5), 3);
+    private final InterpretProperties interpretProperties = new InterpretProperties(
+            new InterpretProperties.RateLimit(2),
+            Duration.ofSeconds(5),
+            3,
+            20,
+            null
+    );
     private MockMvc mockMvc;
 
     private static final Instant FIXED_DATE = Instant.parse("2026-03-15T10:00:00Z");
@@ -447,6 +453,21 @@ class TransactionControllerTest {
                         .content("{\"prompt\": \"ab\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("assistant_validation_error"));
+
+        verify(aiInterpretRateLimiter, never()).check(ArgumentMatchers.anyString());
+        verify(transactionAssistant, never()).interpret(ArgumentMatchers.anyString());
+    }
+
+    @Test
+    void shouldUseConfiguredMaximumPromptLengthBeforeConsumingRateLimit() throws Exception {
+        mockMvc.perform(post("/transactions/interpret")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"prompt": "this prompt is over twenty chars"}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("assistant_validation_error"))
+                .andExpect(jsonPath("$.message").value("Prompt exceeds the 20 character limit"));
 
         verify(aiInterpretRateLimiter, never()).check(ArgumentMatchers.anyString());
         verify(transactionAssistant, never()).interpret(ArgumentMatchers.anyString());

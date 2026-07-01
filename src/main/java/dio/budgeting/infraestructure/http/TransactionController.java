@@ -113,7 +113,7 @@ public class TransactionController {
         Instant started = Instant.now();
         String prompt = request.prompt();
         try {
-            AssistantInputValidator.validatePrompt(prompt, interpretProperties.minPromptLength());
+            AssistantInputValidator.validatePrompt(prompt, interpretProperties.minPromptLength(), interpretProperties.maxPromptLength());
         } catch (RuntimeException exception) {
             logInterpretAttempt(prompt, started, "validation_error");
             throw exception;

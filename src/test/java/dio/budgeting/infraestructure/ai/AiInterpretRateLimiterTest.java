@@ -77,7 +77,13 @@ class AiInterpretRateLimiterTest {
     }
 
     private InterpretProperties properties(int requestsPerMinute) {
-        return new InterpretProperties(new InterpretProperties.RateLimit(requestsPerMinute), Duration.ofSeconds(5), 3);
+        return new InterpretProperties(
+                new InterpretProperties.RateLimit(requestsPerMinute),
+                Duration.ofSeconds(5),
+                3,
+                4_000,
+                null
+        );
     }
 
     private Clock fixedClock() {
