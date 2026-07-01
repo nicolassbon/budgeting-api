@@ -41,7 +41,7 @@ class FlywayMigrationIT {
             assertThat(context.isActive()).isTrue();
         }
 
-        assertThat(readAppliedVersions(databaseName)).containsExactly("1", "2", "3", "4", "5");
+        assertThat(readAppliedVersions(databaseName)).containsExactly("1", "2", "3", "4", "5", "6");
         assertThat(readColumns(databaseName)).containsExactly(
                 new ColumnState("id", "bigint", "NO", "YES"),
                 new ColumnState("description", "character varying", "YES", "NO"),
@@ -57,6 +57,14 @@ class FlywayMigrationIT {
                 new ColumnState("role", "character varying", "NO", "NO"),
                 new ColumnState("weekly_budget_amount", "numeric", "YES", "NO")
         );
+        assertThat(readColumns(databaseName, "password_reset_token")).containsExactly(
+                new ColumnState("id", "bigint", "NO", "YES"),
+                new ColumnState("user_id", "bigint", "NO", "NO"),
+                new ColumnState("token_hash", "character varying", "NO", "NO"),
+                new ColumnState("expires_at", "timestamp with time zone", "NO", "NO"),
+                new ColumnState("used_at", "timestamp with time zone", "YES", "NO"),
+                new ColumnState("created_at", "timestamp with time zone", "NO", "NO")
+        );
     }
 
     @Test
@@ -64,7 +72,7 @@ class FlywayMigrationIT {
         String databaseName = createDatabase();
 
         try (ConfigurableApplicationContext ignored = startBudgetingApplication(databaseName)) {
-            assertThat(readAppliedVersions(databaseName)).containsExactly("1", "2", "3", "4", "5");
+            assertThat(readAppliedVersions(databaseName)).containsExactly("1", "2", "3", "4", "5", "6");
         }
 
         assertThatThrownBy(() -> startBudgetingApplication(
@@ -81,7 +89,7 @@ class FlywayMigrationIT {
         String databaseName = createDatabase();
 
         try (ConfigurableApplicationContext ignored = startBudgetingApplication(databaseName)) {
-            assertThat(readAppliedVersions(databaseName)).containsExactly("1", "2", "3", "4", "5");
+            assertThat(readAppliedVersions(databaseName)).containsExactly("1", "2", "3", "4", "5", "6");
         }
 
         assertThatThrownBy(() -> startSchemaValidationApplication(databaseName))

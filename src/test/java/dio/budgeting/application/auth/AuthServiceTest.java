@@ -86,6 +86,11 @@ class AuthServiceTest {
         private User savedUser;
 
         @Override
+        public Optional<User> findById(Long id) {
+            return userToFind.filter(user -> user.id().equals(id));
+        }
+
+        @Override
         public Optional<User> findByEmail(String email) {
             emailToFind = email;
             return userToFind;

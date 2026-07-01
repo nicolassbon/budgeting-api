@@ -1,9 +1,15 @@
 package dio.budgeting.infraestructure.http;
 
 import dio.budgeting.BudgetingApplication;
+import dio.budgeting.application.auth.PasswordResetEmail;
+import dio.budgeting.application.auth.PasswordResetMailSender;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
@@ -15,8 +21,14 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.net.URI;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -29,6 +41,7 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.webAppC
         "spring.ai.openai.api-key=test-key",
         "spring.docker.compose.enabled=false"
 })
+@Import(AuthControllerTest.PasswordResetMailTestConfiguration.class)
 @Testcontainers
 class AuthControllerTest {
     @Container
@@ -47,10 +60,14 @@ class AuthControllerTest {
     @Autowired
     private WebApplicationContext webApplicationContext;
 
+    @Autowired
+    private CapturingPasswordResetMailSender passwordResetMailSender;
+
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
+        passwordResetMailSender.clear();
         mockMvc = webAppContextSetup(webApplicationContext)
                 .apply(springSecurity())
                 .build();
@@ -89,7 +106,73 @@ class AuthControllerTest {
 
         mockMvc.perform(get("/auth/me").session((MockHttpSession) session))
                 .andExpect(status().isUnauthorized());
-}
+	}
+
+    @Test
+    void shouldAcceptForgotPasswordWithoutRevealingAccountsAndSendOnlyKnownUserResetLink() throws Exception {
+        String email = uniqueEmail();
+
+        mockMvc.perform(post("/auth/register")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(authJson(email, "secret-password")))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/auth/forgot-password")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(forgotPasswordJson(" " + email.toUpperCase() + " ")))
+                .andExpect(status().isAccepted());
+
+        mockMvc.perform(post("/auth/forgot-password")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(forgotPasswordJson("missing-" + email)))
+                .andExpect(status().isAccepted());
+
+        assertThat(passwordResetMailSender.sentEmails()).hasSize(1);
+        PasswordResetEmail sentEmail = passwordResetMailSender.sentEmails().getFirst();
+        assertThat(sentEmail.to()).isEqualTo(email);
+        assertThat(extractToken(sentEmail.resetLink())).isNotBlank();
+    }
+
+    @Test
+    void shouldResetPasswordOnceWithValidToken() throws Exception {
+        String email = uniqueEmail();
+
+        mockMvc.perform(post("/auth/register")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(authJson(email, "secret-password")))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/auth/forgot-password")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(forgotPasswordJson(email)))
+                .andExpect(status().isAccepted());
+        String token = extractToken(passwordResetMailSender.sentEmails().getFirst().resetLink());
+
+        mockMvc.perform(post("/auth/reset-password")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(resetPasswordJson(token, "new-secret-password")))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(post("/auth/login")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(authJson(email, "new-secret-password")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value(email));
+
+        mockMvc.perform(post("/auth/reset-password")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(resetPasswordJson(token, "another-secret-password")))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("reset_token_invalid"));
+    }
 
     @Test
     void shouldRejectDuplicateEmailAndBadCredentials() throws Exception {
@@ -134,5 +217,54 @@ class AuthControllerTest {
         return """
                 {"email":"%s","password":"%s"}
                 """.formatted(email, password);
+    }
+
+    private static String forgotPasswordJson(String email) {
+        return """
+                {"email":"%s"}
+                """.formatted(email);
+    }
+
+    private static String resetPasswordJson(String token, String newPassword) {
+        return """
+                {"token":"%s","newPassword":"%s"}
+                """.formatted(token, newPassword);
+    }
+
+    private static String extractToken(String resetLink) {
+        String query = URI.create(resetLink).getQuery();
+        for (String parameter : query.split("&")) {
+            String[] parts = parameter.split("=", 2);
+            if (parts.length == 2 && parts[0].equals("token")) {
+                return URLDecoder.decode(parts[1], StandardCharsets.UTF_8);
+            }
+        }
+        throw new IllegalArgumentException("Reset token not found in link");
+    }
+
+    @TestConfiguration
+    static class PasswordResetMailTestConfiguration {
+        @Bean
+        @Primary
+        CapturingPasswordResetMailSender passwordResetMailSender() {
+            return new CapturingPasswordResetMailSender();
+        }
+    }
+
+    static class CapturingPasswordResetMailSender implements PasswordResetMailSender {
+        private final List<PasswordResetEmail> sentEmails = new ArrayList<>();
+
+        @Override
+        public void send(PasswordResetEmail email) {
+            sentEmails.add(email);
+        }
+
+        List<PasswordResetEmail> sentEmails() {
+            return sentEmails;
+        }
+
+        void clear() {
+            sentEmails.clear();
+        }
     }
 }

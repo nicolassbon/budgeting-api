@@ -3,7 +3,10 @@ package dio.budgeting.infraestructure.http;
 import dio.budgeting.application.auth.AuthService;
 import dio.budgeting.application.auth.AuthenticatedUser;
 import dio.budgeting.application.auth.DuplicateEmailException;
+import dio.budgeting.application.auth.PasswordResetService;
+import dio.budgeting.application.auth.PasswordResetTokenInvalidException;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -23,9 +26,11 @@ import java.math.BigDecimal;
 @RequestMapping("/auth")
 public class AuthController {
     private final AuthService authService;
+    private final PasswordResetService passwordResetService;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, PasswordResetService passwordResetService) {
         this.authService = authService;
+        this.passwordResetService = passwordResetService;
     }
 
     @PostMapping("/register")
@@ -85,6 +90,18 @@ public class AuthController {
         SecurityContextHolder.clearContext();
     }
 
+    @PostMapping("/forgot-password")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public void forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        passwordResetService.requestReset(request.email());
+    }
+
+    @PostMapping("/reset-password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        passwordResetService.resetPassword(request.token(), request.newPassword());
+    }
+
     @ExceptionHandler(DuplicateEmailException.class)
     @ResponseStatus(HttpStatus.CONFLICT)
     ErrorResponse duplicateEmail(DuplicateEmailException exception) {
@@ -97,7 +114,19 @@ public class AuthController {
         return new ErrorResponse("authentication_failed", "Invalid email or password");
     }
 
+    @ExceptionHandler(PasswordResetTokenInvalidException.class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    ErrorResponse invalidPasswordResetToken(PasswordResetTokenInvalidException exception) {
+        return new ErrorResponse("reset_token_invalid", exception.getMessage());
+    }
+
     public record AuthRequest(String email, String password) {
+    }
+
+    public record ForgotPasswordRequest(@NotBlank String email) {
+    }
+
+    public record ResetPasswordRequest(@NotBlank String token, @NotBlank String newPassword) {
     }
 
     public record WeeklyBudget(BigDecimal amount) {
