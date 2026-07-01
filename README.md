@@ -1,94 +1,217 @@
-# Budgeting Project
+# Budgeting Backend
 
-El proyecto **Budgeting** es una API REST diseñada para actuar como un asistente financiero inteligente. Permite registrar, categorizar y listar transacciones, integrando capacidades de inteligencia artificial para interpretar texto o audio en lenguaje natural, comprender el contexto del usuario y ejecutar acciones automáticamente sobre una base de datos PostgreSQL.
+Backend API for the Budgeting MVP: a Spring Boot service that lets an authenticated user manage expenses manually and use AI-assisted text or voice capture for Spanish personal spending prompts.
 
-## Funcionalidades Principales
+The project is intentionally lean. It uses pragmatic layered architecture, PostgreSQL persistence, Spring Security sessions, Flyway migrations, and Spring AI/OpenAI for interpretation, transcription, tool calling, and speech output.
 
-*   **Gestión de Transacciones**: Permite registrar gastos con una descripción, monto y categoría predefinida (por ejemplo, `COMIDA`, `FARMACIA`, `ROPA`, `TRANSPORTE`), así como listar transacciones filtrando por dichas categorías.
-*   **Asistente Financiero Inteligente**: Utiliza modelos de procesamiento de lenguaje natural (LLMs) configurados con un prompt de sistema financiero. El asistente recibe órdenes simples del usuario (por ejemplo, "Anota 50 mil pesos en supermercado") y mapea automáticamente el monto, descripción y categoría adecuada.
-*   **Invocación de Herramientas (Tool Calling)**: Emplea *Tool Calling* a través de Spring AI para que los LLMs invoquen directamente los casos de uso internos de la aplicación (`PersistTransactionUseCase` y `ListTransactionsByCategoryUseCase`).
-*   **Transcripción de Audio**: Ofrece endpoints que aceptan archivos de audio (MP3, etc.), los transcriben utilizando modelos de reconocimiento de voz y, de manera combinada, proceden a analizarlos para ejecutar el registro de transacciones dictadas por voz.
+## Current MVP surface
 
-## Tecnologías Clave
+| Area | Endpoints | Purpose |
+|------|-----------|---------|
+| Auth | `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, `GET /auth/me` | Email/password registration and session login. |
+| Password reset | `POST /auth/forgot-password`, `POST /auth/reset-password` | Token-based reset link flow; email delivery uses Resend when configured. |
+| Budget | `GET /auth/me/weekly-budget`, `PUT /auth/me/weekly-budget` | Read/update the authenticated user's weekly budget. |
+| Transactions | `POST /transactions`, `PUT /transactions/{id}`, `GET /transactions`, `GET /transactions/{category}` | Manual expense creation/update plus owner-scoped history and category lookup. |
+| Dashboard | `GET /dashboard/spending` | Current-month spending summary. Accepts optional `Time-Zone` header. |
+| AI text capture | `POST /transactions/interpret` | Converts a natural-language expense prompt into a draft response for user review. |
+| AI voice capture | `POST /transactions/ai` | Audio upload -> transcription -> LLM tool calling -> MP3 response. |
+| AI utilities | `POST /api/transcribe`, `POST /api/sinthesize`, `GET /api/chat-client`, `GET /api/chat-model` | Demo/utility endpoints for individual AI capabilities. `sinthesize` is intentionally spelled this way for compatibility. |
 
-*   **Java 25**: Lenguaje moderno base para la aplicación.
-*   **Spring Boot 4.0.6**: Framework principal proveiendo infraestructura HTTP, Inyección de Dependencias (IoC), y auto-configuración de Data JPA.
-*   **Spring AI (2.0.0-M4)**: Maneja la abstracción para conectarse con OpenAI y/o DeepSeek, procesando *Chat Models* (razonamiento y tool-calling) y *Audio Transcription Models*.
-*   **PostgreSQL**: Base de datos relacional para persistir transacciones categorizadas.
-*   **Docker Compose**: Facilita la orquestación del entorno de desarrollo (especialmente la base de datos de manera simplificada).
-*   **Lombok**: Reduce el código repetitivo en entidades y DTOs (`@Getter`, `@AllArgsConstructor`).
+All non-auth endpoints are protected by Spring Security. Login creates an HTTP-only `JSESSIONID`; CSRF protection uses Spring's cookie token repository.
 
-## Arquitectura y Módulos de Código
+## Stack
 
-La arquitectura oficial del MVP es **pragmatic Layered Architecture** con límites claros entre transporte, orquestación, reglas de negocio e integraciones.
+| Component | Current choice |
+|-----------|----------------|
+| Runtime | Java 25 |
+| Framework | Spring Boot 4.0.6 |
+| AI | Spring AI 2.0.0-M4 with OpenAI chat, Whisper transcription, and TTS models |
+| Database | PostgreSQL 16 via Docker Compose |
+| Persistence | Spring Data JPA with `ddl-auto=validate` |
+| Migrations | Flyway SQL migrations in `src/main/resources/db/migration` |
+| Security | Spring Security sessions + BCrypt password hashing |
+| Email | Resend REST API for password reset delivery |
 
-Como no-objetivo explícito para este desafío: **strict Hexagonal Architecture and full Clean Architecture are out of scope for this MVP**. La prioridad es mantener compatibilidad, claridad y velocidad de entrega sin agregar abstracciones que el MVP todavía no necesita.
+## Architecture at a glance
 
-### Quick path
+```mermaid
+flowchart LR
+    Client[Frontend / API client]
+    HTTP[HTTP controllers]
+    App[Application services]
+    Domain[Domain model + repository contracts]
+    Infra[Infrastructure adapters]
+    DB[(PostgreSQL)]
+    OpenAI[OpenAI via Spring AI]
+    Email[Resend]
 
-*   Los controladores deben seguir siendo adapters finos de HTTP/transporte y no dueños de reglas de negocio.
-*   La lógica de casos de uso vive en `application/`.
-*   La persistencia, seguridad, IA y wiring de Spring quedan en los bordes de infraestructura.
-
-### Responsabilidades por capa
-
-*   `domain/`: core business models, invariants, and repository contracts.
-*   `application/`: use-case orchestration, transaction boundaries, and user-scoped operations.
-*   `infraestructure/`: HTTP, persistence, security, and framework adapters.
-*   `infraestructure/ai/`: AI-facing orchestration owned by the infrastructure edge.
-*   `infraestructure/http/assistant/`: assistant/demo HTTP adapters and AI HTTP error responses.
-*   `config/`: configuración de Spring Boot, seguridad y Flyway para sostener los límites anteriores.
-
-### Restricciones del MVP
-
-*   El paquete `infraestructure` mantiene ese spelling por compatibilidad y no se renombra en este cambio.
-*   La interpretación asistida por IA produce un borrador; persistir una transacción sigue siendo un paso explícito de confirmación del usuario. Cualquier refactor futuro del flujo IA debe preservar la confirmación antes del guardado como una regla obligatoria.
-*   Manual transaction creation remains available even if AI flows fail or are not used; manual editing is part of the target MVP scope but must be introduced through an explicit backend change.
-
-## Endpoints Notables
-
-*   `POST /transactions`: Crea manualmente una transacción pasándole el esquema explícito de JSON.
-*   `GET /transactions/{category}`: Lista las transacciones guardadas que pertenezcan a la categoría especificada.
-*   `POST /transactions/ai`: conserva el flujo asistido actual de transcripción, tool calling y respuesta de audio; para un borrador con confirmación previa usá `POST /transactions/interpret`.
-*   `POST /transactions/interpret`: Interpreta un prompt de texto y devuelve un `TransactionDraft` para revisión/confirmación antes de guardar.
-*   `POST /api/transcribe`: Endpoint simple de utilidad para testear la funcionalidad pura de transcripción subiendo un archivo.
-
-## Base de datos y migraciones
-
-La evolución del esquema se maneja con **Flyway** usando migraciones SQL versionadas en `src/main/resources/db/migration`.
-
-Si Flyway detecta que tu historial local diverge de los archivos versionados, frená el arranque, corregí la causa y reiniciá la base local con:
-
-```bash
-docker compose down -v
-docker compose up -d
+    Client --> HTTP
+    HTTP --> App
+    App --> Domain
+    App --> Infra
+    Infra --> DB
+    Infra --> OpenAI
+    Infra --> Email
 ```
 
-## Entorno local (`.env`)
+The official MVP decision is **pragmatic Layered Architecture with clean boundaries**:
 
-La app y Docker Compose leen variables de entorno desde un archivo `.env` en la raíz del proyecto. Compose lo carga automáticamente; la app usa los mismos valores para el datasource y la API key de OpenAI.
+- `domain/` owns business concepts such as transactions, categories, users, and repository contracts.
+- `application/` orchestrates use cases, authenticated ownership, transaction boundaries, and dashboard calculations.
+- `infraestructure/` contains HTTP, JPA, Spring Security, Spring AI, email, and framework adapters.
+- `config/` wires Spring Boot, Flyway, security, and application properties.
 
-### Quick path (todo en Docker Compose)
+`infraestructure` is misspelled in package names on purpose for compatibility. Do not rename it casually.
 
-1. Copiá el template y cargá tu API key: `cp .env.example .env`
-2. (Opcional) Cambiá `POSTGRES_*` si querés otro usuario/clave/base.
-3. Levantá base + backend juntos:
+## Core flows
+
+### Auth and password reset
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant AuthController
+    participant AuthService
+    participant PasswordResetService
+    participant Mail as Resend mail adapter
+    participant DB as PostgreSQL
+
+    User->>AuthController: register/login
+    AuthController->>AuthService: normalize email + hash/check password
+    AuthService->>DB: save or load user
+    AuthController-->>User: authenticated user + JSESSIONID on login
+
+    User->>AuthController: forgot password
+    AuthController->>PasswordResetService: requestReset(email)
+    PasswordResetService->>DB: store hashed, expiring token
+    PasswordResetService->>Mail: send reset link when RESEND_API_KEY exists
+    User->>AuthController: reset password(token, newPassword)
+    AuthController->>PasswordResetService: validate token + update BCrypt password
+```
+
+Defensible choices: email normalization, BCrypt password hashing, hashed reset tokens, token expiry, used-token invalidation, and non-enumerating forgot-password behavior.
+
+### Manual transaction and history
+
+```mermaid
+flowchart TD
+    A[Authenticated request] --> B[TransactionController]
+    B --> C[TransactionService]
+    C --> D[AuthenticatedUserProvider]
+    C --> E[TransactionRepository]
+    E --> F[(transactions table)]
+
+    B -->|POST /transactions| C
+    B -->|PUT /transactions/id| C
+    B -->|GET /transactions with filters| C
+```
+
+Manual capture stays available even when AI is unavailable. Transaction reads and writes are scoped to the current authenticated user; history supports optional `from`, `to`, and `category` filters and returns totals with the item list.
+
+### Text AI interpretation
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Controller as TransactionController
+    participant RateLimit as AiInterpretRateLimiter
+    participant Assistant as TransactionAssistantFacade
+    participant OpenAI
+
+    Client->>Controller: POST /transactions/interpret { prompt }
+    Controller->>Controller: validate prompt length
+    Controller->>RateLimit: check user-scoped limit
+    Controller->>Assistant: interpret(prompt)
+    Assistant->>OpenAI: structured interpretation request
+    OpenAI-->>Assistant: draft payload
+    Assistant-->>Controller: OK / INCOMPLETE / OUT_OF_SCOPE
+    Controller-->>Client: draft response + rate-limit headers
+```
+
+This endpoint returns a draft for review; it does not persist the transaction by itself.
+
+### Voice AI tool-calling flow
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Controller as TransactionController
+    participant Assistant as TransactionAssistantFacade
+    participant STT as OpenAI transcription
+    participant LLM as OpenAI chat + Spring AI tools
+    participant Service as TransactionService
+    participant TTS as OpenAI speech
+
+    Client->>Controller: POST /transactions/ai multipart audio
+    Controller->>Assistant: transcribe(file)
+    Assistant->>STT: audio -> text
+    Assistant->>LLM: user text with transaction tools
+    LLM->>Service: persist/list transaction when tool is selected
+    Service-->>LLM: tool result
+    Assistant->>TTS: assistant text -> MP3
+    Assistant-->>Client: audio/mp3 attachment
+```
+
+This is the demo voice flow. It intentionally combines transcription, LLM tool calling, application use cases, and TTS into a single endpoint.
+
+## Local setup
+
+1. Copy the local environment template:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Fill values you need:
+
+   | Variable | Purpose |
+   |----------|---------|
+   | `OPENAI_API_KEY` | Required for real AI flows and AI integration tests. |
+   | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` | Optional local database overrides. Defaults match Compose. |
+   | `RESEND_API_KEY`, `RESEND_SENDER` | Optional password reset email delivery. Missing API key skips sending and logs a warning. |
+   | `PASSWORD_RESET_BASE_URL`, `PASSWORD_RESET_TOKEN_TTL` | Password reset link base URL and token lifetime. |
+
+3. Run the full stack:
+
    ```bash
    docker compose up -d --build
    ```
-4. La API queda en `http://localhost:8080`. Logs: `docker compose logs -f backend`.
-5. Para reiniciar el esquema desde cero (Flyway): `docker compose down -v` y volvé a levantar.
 
-> ¿Preferís correr la app desde tu IDE/JVM en vez de dentro del contenedor? Entonces solo levantá la base con `docker compose up -d database` y corré la app; `application.properties` ya usa `localhost` por default. El contenedor `backend`, en cambio, usa `POSTGRES_HOST=database`.
+   The API is exposed at `http://localhost:8080`.
 
-### Detalles
+For IDE/JVM runs, start only the database and then run the app locally:
 
-| Variable | Uso | Default seguro |
-|----------|-----|----------------|
-| `OPENAI_API_KEY` | `spring.ai.openai.api-key` en la app | sin default — **requerida** |
-| `POSTGRES_HOST` | host de la base que usa la app | `localhost` (host-local) / `database` (dentro de Compose) |
-| `POSTGRES_USER` | usuario de la base (Compose + app) | `app` |
-| `POSTGRES_PASSWORD` | contraseña de la base (Compose + app) | `app` |
-| `POSTGRES_DB` | nombre de la base (Compose + app) | `transaction` |
+```bash
+docker compose up -d database
+./gradlew bootRun
+```
 
-> `.env` está ignorado por git. `.env.example` queda versionado como referencia. Nunca commitees valores reales.
+## Tests and verification
+
+Use the Gradle wrapper:
+
+```bash
+./gradlew test
+```
+
+Useful focused checks:
+
+```bash
+./gradlew test --tests "dio.budgeting.BudgetingApplicationTests"
+./gradlew test --tests "dio.budgeting.infraestructure.persistence.FlywayMigrationIT"
+./gradlew test --tests "dio.budgeting.infraestructure.ai.ToolCallingIT"
+```
+
+Notes for reviewers:
+
+- `OPENAI_API_KEY` is required for real AI flows; OpenAI integration tests are gated by environment and call the real API when enabled.
+- `FlywayMigrationIT` is the safest deterministic integration check because it uses Testcontainers PostgreSQL and no OpenAI credentials.
+- `spring.jpa.hibernate.ddl-auto=validate` means persistence changes must include matching Flyway migrations.
+- `src/main/java/dio/budgeting/config/FlywayConfig.java` is load-bearing for Boot 4 startup ordering; do not remove it without proving startup still works.
+
+## MVP constraints worth preserving
+
+- Keep the documentation set minimal: README plus the architecture/defense note in `docs/ARCHITECTURE_DECISION.md` are enough for the current backend.
+- Keep manual transaction paths available even if AI flows fail.
+- Preserve `/api/sinthesize` spelling unless a compatibility-breaking API rename is explicitly planned.
+- Treat strict Hexagonal or full Clean Architecture as out of scope for this MVP; evolve only when real complexity justifies it.

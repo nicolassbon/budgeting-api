@@ -1,102 +1,222 @@
-# Decisión arquitectónica — MVP Budgeting
+# Architecture decision — Budgeting MVP backend
 
-## Decisión
+## Decision
 
-Para el MVP de Budgeting vamos a usar una **arquitectura por capas pragmática con límites limpios**.
+Budgeting uses a **pragmatic Layered Architecture with clean boundaries**.
 
-Esto significa que el proyecto se organiza por responsabilidades claras —HTTP, aplicación, dominio e infraestructura— sin adoptar una arquitectura Hexagonal estricta ni una Clean Architecture completa. La prioridad del MVP es entregar una demo coherente, mantenible y fácil de revisar, sin introducir abstracciones que todavía no justifican su costo.
+This is the right level of architecture for the MVP: clear enough to defend in review, simple enough to keep the codebase understandable, and not overloaded with strict Hexagonal or full Clean Architecture ceremony before the product needs it.
 
-## Contexto del producto
+## Product context
 
-El PRD define un MVP para un desafío técnico de alcance acotado. El producto debe demostrar, de punta a punta:
+The backend must support a credible personal-finance MVP:
 
-- autenticación con email y contraseña;
-- captura de gastos por texto y voz;
-- interpretación asistida por IA;
-- confirmación antes de persistir datos interpretados por IA;
-- gestión manual de gastos, con creación disponible y edición prevista como parte del alcance objetivo del MVP;
-- historial y dashboard con visibilidad simple.
+- email/password authentication with session-based access;
+- password reset by expiring token;
+- manual transaction creation, update, category lookup, and filtered history;
+- dashboard spending summary;
+- AI text interpretation that returns a draft for user review;
+- AI voice flow that accepts audio, transcribes it, lets the LLM call transaction tools, and returns spoken audio.
 
-El objetivo no es construir una plataforma financiera extensible desde el día uno. El objetivo es mostrar un producto creíble, con buen criterio técnico y una experiencia completa.
+The goal is not to build a financial platform framework. The goal is to demonstrate a coherent backend that can be explained, tested, and evolved.
 
-## Por qué Layered Architecture
+## System shape
 
-La arquitectura por capas encaja bien con el tamaño y la presión del MVP porque mantiene una estructura simple:
+```mermaid
+flowchart LR
+    Client[Frontend / API client]
+    Security[Spring Security session + CSRF]
+    HTTP[HTTP controllers]
+    App[Application services]
+    Domain[Domain model]
+    Repo[Repository contracts]
+    JPA[JPA adapters]
+    DB[(PostgreSQL)]
+    AI[Spring AI / OpenAI]
+    Mail[Resend]
 
-| Capa | Responsabilidad |
-|------|-----------------|
-| HTTP / Controllers | Recibir requests, validar entrada básica, traducir responses. |
-| Application Services | Orquestar casos de uso: usuario actual, reglas de flujo, persistencia, IA y dashboard. |
-| Domain | Representar conceptos del negocio y reglas importantes. |
-| Infrastructure | Implementar detalles técnicos: JPA, Spring Security, Spring AI, Flyway y configuración. |
+    Client --> Security --> HTTP
+    HTTP --> App
+    App --> Domain
+    App --> Repo
+    Repo --> JPA --> DB
+    App --> AI
+    App --> Mail
+```
 
-Esta separación alcanza para que el código sea entendible y testeable sin convertir cada operación en una colección de puertos, adapters, presenters e interactors.
+| Layer | Responsibility | Examples |
+|-------|----------------|----------|
+| HTTP / transport | Request mapping, input/output DTOs, status codes, HTTP-specific errors. | `AuthController`, `TransactionController`, `DashboardController`, assistant demo controllers. |
+| Application | Use-case orchestration, authenticated ownership, transactions, AI workflow coordination. | `AuthService`, `PasswordResetService`, `TransactionService`, `DashboardService`. |
+| Domain | Business concepts and contracts that should not depend on HTTP/JPA. | `Transaction`, `Category`, `User`, repository interfaces. |
+| Infrastructure | Technical adapters and framework integrations. | JPA repositories, Spring Security provider, Spring AI facade, Resend mail sender. |
+| Config | Framework wiring and operational properties. | `SecurityConfig`, `FlywayConfig`, AI/auth properties. |
 
-## Por qué no Hexagonal estricta
+The package name `infraestructure` is intentionally preserved because it already exists in source and tests. Renaming it is a separate refactor, not part of the MVP defense.
 
-Hexagonal es útil cuando el dominio necesita aislarse fuertemente de muchas entradas y salidas: colas, CLIs, webhooks, múltiples proveedores, storage externo, APIs de terceros intercambiables, etc.
+## Why this is defensible
 
-Este MVP tiene una forma mucho más directa:
+### Why layered architecture
 
-- una API REST;
-- PostgreSQL;
-- integración con Spring AI/OpenAI;
-- autenticación básica;
-- una experiencia de frontend centrada en dashboard, captura e historial.
+Layered architecture matches the current backend because most flows are request/response use cases backed by PostgreSQL and a small number of external integrations. It keeps the common path easy to trace:
 
-Forzar Hexagonal ahora agregaría indirection antes de tener complejidad real. Eso aumentaría el costo de implementación y revisión sin mejorar proporcionalmente el producto.
+```mermaid
+flowchart TD
+    Request[HTTP request] --> Controller[Thin controller]
+    Controller --> Service[Application service]
+    Service --> Domain[Domain object / rule]
+    Service --> Repository[Repository contract]
+    Repository --> Adapter[JPA adapter]
+    Adapter --> Database[(PostgreSQL)]
+```
 
-## Por qué no Clean Architecture completa
+The important discipline is not the number of folders. It is that controllers stay thin, application services own use-case orchestration, domain concepts stay protected from framework details, and infrastructure remains replaceable at the edges.
 
-Clean Architecture aporta buenas ideas, pero aplicada de forma estricta puede derivar en demasiada ceremonia para este contexto:
+### Why not strict Hexagonal now
 
-- interfaces creadas “por si acaso”;
-- DTOs duplicados sin necesidad clara;
-- interactors para operaciones simples;
-- presenters y boundaries que no aportan al flujo actual;
-- más archivos para revisar sin más valor de negocio.
+Strict Hexagonal Architecture would add ports/adapters around almost every operation. That can be valuable when the domain must support many independent delivery mechanisms or interchangeable providers.
 
-Para este MVP tomamos las ideas útiles —límites claros, controllers delgados, dominio protegido de detalles técnicos— sin adoptar todo el paquete como dogma.
+This MVP has a simpler shape:
 
-## Reglas prácticas del proyecto
+- one primary delivery mechanism: REST;
+- one relational database: PostgreSQL;
+- one AI provider path through Spring AI/OpenAI;
+- one password reset email adapter;
+- small, direct domain rules.
 
-Estas reglas guían el trabajo diario:
+Adding more indirection now would increase review and implementation cost without making the MVP safer.
 
-1. **Los controllers no contienen lógica de negocio.**
-   Deben delegar en servicios de aplicación.
+### Why not full Clean Architecture now
 
-2. **Los services de aplicación orquestan casos de uso.**
-   Pueden coordinar repositorios, usuario autenticado, IA y respuestas del flujo.
+Full Clean Architecture would introduce more interactors, boundaries, presenters, and DTO transformations than the current scope needs. The MVP keeps the useful parts — dependency direction, thin transport, isolated infrastructure, and testable services — without turning simple use cases into ceremony.
 
-3. **El dominio conserva conceptos y reglas importantes.**
-   Ejemplos: transacciones, categorías, usuario propietario y reglas que no deberían depender de HTTP/JPA.
+## Core flows
 
-4. **La infraestructura contiene detalles técnicos.**
-   JPA, entidades de persistencia, Spring Security, Spring AI, Flyway y configuración viven fuera del dominio.
+### 1. Auth and password reset
 
-5. **La IA no debe debilitar reglas de negocio.**
-   El PRD exige que los datos interpretados por IA no se persistan sin confirmación del usuario en el flujo de captura confirmado.
+```mermaid
+sequenceDiagram
+    participant Client
+    participant AuthController
+    participant AuthService
+    participant ResetService as PasswordResetService
+    participant Mail as ResendPasswordResetMailSender
+    participant DB as PostgreSQL
 
-6. **La entrada manual sigue siendo obligatoria.**
-   El usuario debe poder registrar gastos aunque la IA falle o no se use. La edición manual pertenece al alcance objetivo del MVP, pero debe agregarse con un cambio explícito de backend y sus pruebas.
+    Client->>AuthController: POST /auth/register
+    AuthController->>AuthService: register(email, password)
+    AuthService->>DB: save normalized email + BCrypt password
 
-7. **No se renombra `infraestructure` dentro de esta decisión.**
-   El paquete está mal escrito, pero cambiarlo es un refactor separado porque toca compatibilidad, imports y revisión.
+    Client->>AuthController: POST /auth/login
+    AuthController->>AuthService: authenticate(email, password)
+    AuthController-->>Client: user + HTTP-only JSESSIONID
 
-## Consecuencias esperadas
+    Client->>AuthController: POST /auth/forgot-password
+    AuthController->>ResetService: requestReset(email)
+    ResetService->>DB: store hashed token with expiry
+    ResetService->>Mail: send reset link if RESEND_API_KEY is configured
 
-Esta decisión favorece:
+    Client->>AuthController: POST /auth/reset-password
+    AuthController->>ResetService: resetPassword(token, newPassword)
+    ResetService->>DB: verify token, update password, mark token used
+```
 
-- menor carga cognitiva para nuevos contribuidores;
-- menor riesgo de sobreingeniería;
-- cambios más chicos y revisables;
-- buena alineación con Spring Boot;
-- espacio para evolucionar si el producto crece.
+Defensive points:
 
-Si más adelante aparecen múltiples canales de entrada, proveedores intercambiables o reglas de dominio más complejas, se puede reconsiderar una separación más estricta. Por ahora, esa complejidad sería prematura.
+- passwords are encoded with BCrypt;
+- emails are normalized before lookup;
+- reset tokens are stored as hashes, not raw tokens;
+- reset tokens expire and are marked used;
+- missing Resend configuration does not break the app, but skips email delivery with a warning.
 
-## Resumen
+### 2. Manual transaction creation, update, and history
 
-La arquitectura elegida no es “menos arquitectura”. Es una decisión proporcional al producto.
+```mermaid
+flowchart TD
+    A[Authenticated user] --> B[TransactionController]
+    B -->|POST /transactions| C[TransactionService.create]
+    B -->|PUT /transactions/id| D[TransactionService.update]
+    B -->|GET /transactions?from&to&category| E[TransactionService.findHistory]
+    C --> F[AuthenticatedUserProvider]
+    D --> F
+    E --> F
+    C --> G[TransactionRepository]
+    D --> G
+    E --> G
+    G --> H[(PostgreSQL)]
+```
 
-Para este MVP, una **Layered Architecture pragmática con límites limpios** nos da suficiente orden sin bloquear velocidad. La disciplina está en respetar responsabilidades, no en multiplicar abstracciones.
+Defensive points:
+
+- manual expense entry is not coupled to AI availability;
+- transaction operations are owner-scoped through the authenticated user;
+- update checks the transaction belongs to the current user before saving;
+- history accepts optional date and category filters and returns total amount plus count.
+
+### 3. Text AI interpretation
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Controller as TransactionController
+    participant Limiter as AiInterpretRateLimiter
+    participant Assistant as TransactionAssistantFacade
+    participant OpenAI
+
+    Client->>Controller: POST /transactions/interpret
+    Controller->>Controller: validate prompt size
+    Controller->>Limiter: user-scoped rate-limit check
+    Controller->>Assistant: interpret(prompt)
+    Assistant->>OpenAI: structured prompt using interpretation system message
+    OpenAI-->>Assistant: interpreted draft payload
+    Assistant-->>Controller: status + draft fields
+    Controller-->>Client: draft response and rate-limit headers
+```
+
+Defensive points:
+
+- this path returns a draft and does not persist by itself;
+- prompt length, timeout, and rate limit are configurable;
+- out-of-scope prompts are rejected instead of being forced into expenses;
+- Argentine amount normalization is handled in the AI interpretation edge.
+
+### 4. Voice AI flow
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Controller as TransactionController
+    participant Assistant as TransactionAssistantFacade
+    participant STT as OpenAI Whisper
+    participant LLM as OpenAI chat
+    participant Tool as TransactionService tools
+    participant TTS as OpenAI TTS
+
+    Client->>Controller: POST /transactions/ai multipart file
+    Controller->>Assistant: validate and process audio
+    Assistant->>STT: transcribe audio
+    STT-->>Assistant: Spanish text
+    Assistant->>LLM: prompt with Spring AI tools
+    LLM->>Tool: persist-transaction or list-transactions-by-category
+    Tool-->>LLM: application result
+    LLM-->>Assistant: assistant response text
+    Assistant->>TTS: synthesize response
+    Assistant-->>Client: audio/mp3
+```
+
+Defensive points:
+
+- the endpoint demonstrates the full multimodal path in one reviewable flow;
+- tool calling reaches the same `TransactionService` use cases used by manual endpoints;
+- TTS compatibility endpoint remains `/api/sinthesize` with the current spelling.
+
+## Operating constraints
+
+- `spring.jpa.hibernate.ddl-auto=validate` means schema changes require Flyway migrations in the same change.
+- `FlywayConfig` is load-bearing for Spring Boot 4.0.6 startup ordering and should not be simplified casually.
+- Real AI flows require `OPENAI_API_KEY` and can call external OpenAI APIs during integration tests.
+- Password reset email requires `RESEND_API_KEY`; without it, reset token generation still works but email sending is skipped.
+- The current documentation set should stay small: README for usage and this file for architecture defense.
+
+## Evolution rule
+
+Move toward stricter Hexagonal/Clean boundaries only when real complexity appears: multiple delivery channels, provider replacement pressure, richer domain policy, or integration churn. Until then, the MVP wins by keeping boundaries clear and ceremony low.
