@@ -10,6 +10,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+
 @Service
 public class AuthService {
     private final UserRepository userRepository;
@@ -31,7 +33,7 @@ public class AuthService {
             throw new DuplicateEmailException(normalizedEmail);
         });
 
-        User saved = userRepository.save(new User(null, normalizedEmail, passwordEncoder.encode(password), UserRole.USER));
+        User saved = userRepository.save(new User(null, normalizedEmail, passwordEncoder.encode(password), UserRole.USER, null));
         return AuthenticatedUser.from(saved);
     }
 
@@ -41,8 +43,24 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public AuthenticatedUser currentUser(String email) {
+        return AuthenticatedUser.from(requireUser(email));
+    }
+
+    @Transactional(readOnly = true)
+    public BigDecimal currentWeeklyBudget(String email) {
+        return requireUser(email).weeklyBudgetAmount();
+    }
+
+    @Transactional
+    public BigDecimal updateWeeklyBudget(String email, BigDecimal amount) {
+        User existing = requireUser(email);
+        User updated = new User(existing.id(), existing.email(), existing.password(), existing.role(), amount);
+
+        return userRepository.save(updated).weeklyBudgetAmount();
+    }
+
+    private User requireUser(String email) {
         return userRepository.findByEmail(normalize(email))
-                .map(AuthenticatedUser::from)
                 .orElseThrow(() -> new IllegalStateException("Authenticated user not found"));
     }
 

@@ -7,6 +7,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
+
 @Entity
 @Table(name = "app_user")
 @Data
@@ -27,11 +29,14 @@ public class UserEntity {
     @Column(nullable = false)
     private UserRole role;
 
+    @Column(name = "weekly_budget_amount", precision = 19, scale = 2)
+    private BigDecimal weeklyBudgetAmount;
+
     public static UserEntity from(User user) {
-        return new UserEntity(user.id(), user.email(), user.password(), user.role());
+        return new UserEntity(user.id(), user.email(), user.password(), user.role(), user.weeklyBudgetAmount());
     }
 
     public User toDomain() {
-        return new User(id, email, password, role);
+        return new User(id, email, password, role, weeklyBudgetAmount);
     }
 }

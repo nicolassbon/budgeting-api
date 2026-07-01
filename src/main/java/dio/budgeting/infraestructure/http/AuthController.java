@@ -3,6 +3,8 @@ package dio.budgeting.infraestructure.http;
 import dio.budgeting.application.auth.AuthService;
 import dio.budgeting.application.auth.AuthenticatedUser;
 import dio.budgeting.application.auth.DuplicateEmailException;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
@@ -14,6 +16,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.web.bind.annotation.*;
+
+import java.math.BigDecimal;
 
 @RestController
 @RequestMapping("/auth")
@@ -60,6 +64,17 @@ public class AuthController {
         return authService.currentUser(authentication.getName());
     }
 
+    @GetMapping("/me/weekly-budget")
+    public WeeklyBudget weeklyBudget(Authentication authentication) {
+        return new WeeklyBudget(authService.currentWeeklyBudget(authentication.getName()));
+    }
+
+    @PutMapping("/me/weekly-budget")
+    public WeeklyBudget updateWeeklyBudget(Authentication authentication,
+                                           @Valid @RequestBody WeeklyBudgetRequest request) {
+        return new WeeklyBudget(authService.updateWeeklyBudget(authentication.getName(), request.amount()));
+    }
+
     @PostMapping("/logout")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void logout(HttpServletRequest request, HttpServletResponse response) {
@@ -83,6 +98,12 @@ public class AuthController {
     }
 
     public record AuthRequest(String email, String password) {
+    }
+
+    public record WeeklyBudget(BigDecimal amount) {
+    }
+
+    public record WeeklyBudgetRequest(@PositiveOrZero BigDecimal amount) {
     }
 
     public record ErrorResponse(String error, String message) {
