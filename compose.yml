@@ -17,6 +17,8 @@ services:
 
   backend:
     build: .
+    labels:
+      org.springframework.boot.ignore: "true"
     depends_on:
       database:
         condition: service_healthy
