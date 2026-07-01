@@ -10,7 +10,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
-import java.time.ZoneOffset;
+import java.time.ZoneId;
 
 @Service
 public class DashboardService {
@@ -27,13 +27,22 @@ public class DashboardService {
         this.clock = clock;
     }
 
-    public DashboardSummaryResponse currentMonthSummary() {
-        YearMonth currentMonth = YearMonth.now(clock.withZone(ZoneOffset.UTC));
+    public DashboardSummaryResponse currentMonthSummary(String timeZoneHeader) {
+        ZoneId zoneId;
+        try {
+            zoneId = (timeZoneHeader != null && !timeZoneHeader.isBlank())
+                    ? ZoneId.of(timeZoneHeader)
+                    : clock.getZone();
+        } catch (Exception e) {
+            zoneId = clock.getZone();
+        }
+
+        YearMonth currentMonth = YearMonth.now(clock.withZone(zoneId));
         LocalDate fromDate = currentMonth.atDay(1);
         LocalDate toDateExclusive = currentMonth.plusMonths(1).atDay(1);
 
-        Instant from = fromDate.atStartOfDay(ZoneOffset.UTC).toInstant();
-        Instant to = toDateExclusive.atStartOfDay(ZoneOffset.UTC).toInstant();
+        Instant from = fromDate.atStartOfDay(zoneId).toInstant();
+        Instant to = toDateExclusive.atStartOfDay(zoneId).toInstant();
 
         Long ownerId = authenticatedUserProvider.requireCurrentUserId();
         var aggregate = transactionRepository.aggregateByOwnerAndPeriod(ownerId, from, to);

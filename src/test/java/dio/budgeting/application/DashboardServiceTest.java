@@ -11,6 +11,7 @@ import dio.budgeting.domain.TransactionRepository;
 import org.junit.jupiter.api.Test;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
@@ -37,7 +38,7 @@ class DashboardServiceTest {
         );
         var service = new DashboardService(repository, () -> 99L, FIXED_CLOCK);
 
-        DashboardSummaryResponse summary = service.currentMonthSummary();
+        DashboardSummaryResponse summary = service.currentMonthSummary("UTC");
 
         assertThat(repository.requestedOwnerId).isEqualTo(99L);
         assertThat(summary.transactionCount()).isEqualTo(3L);
@@ -59,7 +60,7 @@ class DashboardServiceTest {
         repository.aggregate = new DashboardAggregate(0L, 0L, List.of());
         var service = new DashboardService(repository, () -> 7L, FIXED_CLOCK);
 
-        DashboardSummaryResponse summary = service.currentMonthSummary();
+        DashboardSummaryResponse summary = service.currentMonthSummary("UTC");
 
         assertThat(repository.requestedOwnerId).isEqualTo(7L);
         assertThat(summary.transactionCount()).isEqualTo(0L);
@@ -76,10 +77,39 @@ class DashboardServiceTest {
         repository.aggregate = new DashboardAggregate(0L, 0L, List.of());
         var service = new DashboardService(repository, () -> 1L, FIXED_CLOCK);
 
-        service.currentMonthSummary();
+        service.currentMonthSummary("UTC");
 
         assertThat(repository.requestedFrom).isEqualTo(Instant.parse("2026-06-01T00:00:00Z"));
         assertThat(repository.requestedTo).isEqualTo(Instant.parse("2026-07-01T00:00:00Z"));
+    }
+
+    @Test
+    void shouldEvaluateMonthRangeBasedOnDynamicTimeZone() {
+        Clock clockInLateJune = Clock.fixed(Instant.parse("2026-06-30T23:00:00Z"), ZoneOffset.UTC);
+        var repository = new FakeRepository();
+        repository.aggregate = new DashboardAggregate(0L, 0L, List.of());
+        var service = new DashboardService(repository, () -> 1L, clockInLateJune);
+
+        service.currentMonthSummary("Asia/Tokyo");
+
+        assertThat(repository.requestedFrom).isEqualTo(Instant.parse("2026-07-01T00:00:00Z").minus(Duration.ofHours(9)));
+        assertThat(repository.requestedTo).isEqualTo(Instant.parse("2026-08-01T00:00:00Z").minus(Duration.ofHours(9)));
+    }
+
+    @Test
+    void shouldFallbackToClockZoneWhenTimezoneHeaderIsMissingOrInvalid() {
+        Clock clockInLateJune = Clock.fixed(Instant.parse("2026-06-30T23:00:00Z"), ZoneOffset.UTC);
+        var repository = new FakeRepository();
+        repository.aggregate = new DashboardAggregate(0L, 0L, List.of());
+        var service = new DashboardService(repository, () -> 1L, clockInLateJune);
+
+        // Fallback on null
+        service.currentMonthSummary(null);
+        assertThat(repository.requestedFrom).isEqualTo(Instant.parse("2026-06-01T00:00:00Z"));
+
+        // Fallback on invalid timezone string
+        service.currentMonthSummary("Invalid/Timezone");
+        assertThat(repository.requestedFrom).isEqualTo(Instant.parse("2026-06-01T00:00:00Z"));
     }
 
     private static final class FakeRepository implements TransactionRepository {

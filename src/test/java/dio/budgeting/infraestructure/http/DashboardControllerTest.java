@@ -11,7 +11,9 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import java.time.LocalDate;
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -22,7 +24,7 @@ class DashboardControllerTest {
     @Test
     void shouldReturnCurrentMonthSummaryForAuthenticatedUser() throws Exception {
         DashboardService service = mock(DashboardService.class);
-        when(service.currentMonthSummary()).thenReturn(new DashboardSummaryResponse(
+        when(service.currentMonthSummary(any())).thenReturn(new DashboardSummaryResponse(
                 new PeriodResponse(LocalDate.of(2026, 3, 1), LocalDate.of(2026, 4, 1)),
                 5750L,
                 57.5,
@@ -52,7 +54,7 @@ class DashboardControllerTest {
     @Test
     void shouldReturnEmptySummaryWithoutTopCategories() throws Exception {
         DashboardService service = mock(DashboardService.class);
-        when(service.currentMonthSummary()).thenReturn(new DashboardSummaryResponse(
+        when(service.currentMonthSummary(any())).thenReturn(new DashboardSummaryResponse(
                 new PeriodResponse(LocalDate.of(2026, 3, 1), LocalDate.of(2026, 4, 1)),
                 0L,
                 0.0,
@@ -74,7 +76,7 @@ class DashboardControllerTest {
     @Test
     void shouldNotExposeSavingsOrGoalFieldsInDashboardSummary() throws Exception {
         DashboardService service = mock(DashboardService.class);
-        when(service.currentMonthSummary()).thenReturn(new DashboardSummaryResponse(
+        when(service.currentMonthSummary(any())).thenReturn(new DashboardSummaryResponse(
                 new PeriodResponse(LocalDate.of(2026, 3, 1), LocalDate.of(2026, 4, 1)),
                 5750L,
                 5750.0,
@@ -93,5 +95,53 @@ class DashboardControllerTest {
                 .andExpect(jsonPath("$.goals").doesNotExist())
                 .andExpect(jsonPath("$.goalAmountCents").doesNotExist())
                 .andExpect(jsonPath("$.AHORRO").doesNotExist());
+    }
+
+    @Test
+    void shouldPassTimezoneHeaderToServiceWhenProvided() throws Exception {
+        DashboardService service = mock(DashboardService.class);
+        when(service.currentMonthSummary(any())).thenReturn(new DashboardSummaryResponse(
+                new PeriodResponse(LocalDate.of(2026, 3, 1), LocalDate.of(2026, 4, 1)),
+                0L, 0.0, 0L, List.of()
+        ));
+
+        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new DashboardController(service)).build();
+
+        mockMvc.perform(get("/dashboard/spending").header("Time-Zone", "Europe/Paris"))
+                .andExpect(status().isOk());
+
+        verify(service).currentMonthSummary("Europe/Paris");
+    }
+
+    @Test
+    void shouldFallbackToBuenosAiresWhenTimezoneHeaderIsMissing() throws Exception {
+        DashboardService service = mock(DashboardService.class);
+        when(service.currentMonthSummary(any())).thenReturn(new DashboardSummaryResponse(
+                new PeriodResponse(LocalDate.of(2026, 3, 1), LocalDate.of(2026, 4, 1)),
+                0L, 0.0, 0L, List.of()
+        ));
+
+        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new DashboardController(service)).build();
+
+        mockMvc.perform(get("/dashboard/spending"))
+                .andExpect(status().isOk());
+
+        verify(service).currentMonthSummary(null);
+    }
+
+    @Test
+    void shouldFallbackToBuenosAiresWhenTimezoneHeaderIsInvalid() throws Exception {
+        DashboardService service = mock(DashboardService.class);
+        when(service.currentMonthSummary(any())).thenReturn(new DashboardSummaryResponse(
+                new PeriodResponse(LocalDate.of(2026, 3, 1), LocalDate.of(2026, 4, 1)),
+                0L, 0.0, 0L, List.of()
+        ));
+
+        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new DashboardController(service)).build();
+
+        mockMvc.perform(get("/dashboard/spending").header("Time-Zone", "Invalid/Timezone"))
+                .andExpect(status().isOk());
+
+        verify(service).currentMonthSummary("Invalid/Timezone");
     }
 }
