@@ -29,7 +29,7 @@ rules:
     test_command: "./gradlew test"
     smoke_commands:
       - "./gradlew test --tests \"dio.budgeting.BudgetingApplicationTests\""
-      - "./gradlew test --tests \"dio.budgeting.FlywayMigrationIT\""
+      - "./gradlew test --tests \"dio.budgeting.infraestructure.persistence.FlywayMigrationIT\""
   archive:
     preserve_archive_history: true
 testing:
@@ -51,10 +51,10 @@ testing:
         command: "./gradlew test --tests \"dio.budgeting.BudgetingApplicationTests\""
         framework: "SpringBootTest"
       - scope: "."
-        command: "./gradlew test --tests \"dio.budgeting.FlywayMigrationIT\""
+        command: "./gradlew test --tests \"dio.budgeting.infraestructure.persistence.FlywayMigrationIT\""
         framework: "JUnit 5 + Testcontainers PostgreSQL"
       - scope: "."
-        command: "./gradlew test --tests \"dio.budgeting.ToolCallingIT\""
+        command: "./gradlew test --tests \"dio.budgeting.infraestructure.ai.ToolCallingIT\""
         framework: "SpringBootTest + Spring AI (requires OPENAI_API_KEY)"
     e2e:
       []

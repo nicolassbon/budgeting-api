@@ -1,4 +1,4 @@
-package dio.budgeting;
+package dio.budgeting.infraestructure.ai;
 
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;

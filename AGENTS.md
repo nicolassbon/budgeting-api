@@ -12,13 +12,13 @@
 - Run all tests: `./gradlew test`
 - Fastest deterministic checks:
   - `./gradlew test --tests "dio.budgeting.BudgetingApplicationTests"`
-  - `./gradlew test --tests "dio.budgeting.FlywayMigrationIT"`
-- Focus a single live AI test: `./gradlew test --tests "dio.budgeting.ToolCallingIT"`
+  - `./gradlew test --tests "dio.budgeting.infraestructure.persistence.FlywayMigrationIT"`
+- Focus a single live AI test: `./gradlew test --tests "dio.budgeting.infraestructure.ai.ToolCallingIT"`
 
 ## Test and env gotchas
 
 - `OPENAI_API_KEY` is required for real AI flows. The OpenAI integration tests are gated by env and will hit the real API when the key is present.
-- `FlywayMigrationIT` is the safest integration test: deterministic, uses Testcontainers Postgres, no OpenAI credentials.
+- `infraestructure.persistence.FlywayMigrationIT` is the safest integration test: deterministic, uses Testcontainers Postgres, no OpenAI credentials.
 - `spring.docker.compose.skip.in-tests=false` is enabled in `src/main/resources/application.properties`; some Spring tests expect Docker/Compose to be available.
 - Copy `.env.example` to `.env` for local setup. Never commit `.env`.
 
@@ -50,4 +50,4 @@
 ## Repo workflow
 
 - `openspec/config.yaml` exists and enables **strict_tdd: true** with `./gradlew test` as the test command.
-- If you need a compact verification step before a larger run, prefer `BudgetingApplicationTests` + `FlywayMigrationIT`, then run the full suite if your change could affect AI or wiring.
+- If you need a compact verification step before a larger run, prefer `BudgetingApplicationTests` + `infraestructure.persistence.FlywayMigrationIT`, then run the full suite if your change could affect AI or wiring.

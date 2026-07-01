@@ -1,4 +1,6 @@
-package dio.budgeting;
+package dio.budgeting.infraestructure.persistence;
+
+import dio.budgeting.BudgetingApplication;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
