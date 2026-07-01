@@ -122,7 +122,7 @@ class AssistantDemoControllerTest {
                                 """))
                 .andExpect(status().isBadGateway())
                 .andExpect(content().json("""
-                        {"error":"assistant_integration_error","message":"Failed to synthesize the requested text"}
+                        {"error":"assistant_integration_error","message":"Assistant integration failed"}
                         """));
     }
 }

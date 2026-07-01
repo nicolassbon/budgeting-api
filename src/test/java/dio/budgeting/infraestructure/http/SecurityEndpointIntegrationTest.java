@@ -1,8 +1,9 @@
 package dio.budgeting.infraestructure.http;
 
 import dio.budgeting.BudgetingApplication;
+import dio.budgeting.infraestructure.ai.InterpretationResult;
+import dio.budgeting.infraestructure.ai.InterpretationStatus;
 import dio.budgeting.infraestructure.ai.TransactionAssistant;
-import dio.budgeting.infraestructure.ai.TransactionDraft;
 import dio.budgeting.domain.Category;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -52,7 +53,8 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.webAppC
 
 @SpringBootTest(classes = BudgetingApplication.class, properties = {
         "spring.ai.openai.api-key=test-key",
-        "spring.docker.compose.enabled=false"
+        "spring.docker.compose.enabled=false",
+        "ai.interpret.rate-limit.requests-per-minute=1"
 })
 @Testcontainers
 class SecurityEndpointIntegrationTest {
@@ -415,7 +417,7 @@ class SecurityEndpointIntegrationTest {
                         ContentDisposition.attachment().filename("audio.mp3").build().toString())
                 .body(new ByteArrayResource("transaction-audio".getBytes())));
         when(transactionAssistant.interpret("latte and bread"))
-                .thenReturn(new TransactionDraft("Coffee and bread", 2300L, Category.COMIDA));
+                .thenReturn(new InterpretationResult(InterpretationStatus.OK, "Coffee and bread", 2300L, Category.COMIDA));
 
         mockMvc.perform(get("/api/chat-client")
                         .session(session)
@@ -466,11 +468,46 @@ class SecurityEndpointIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.description").value("Coffee and bread"))
                 .andExpect(jsonPath("$.amount").value(2300))
-                .andExpect(jsonPath("$.category").value("COMIDA"));
+                .andExpect(jsonPath("$.category").value("COMIDA"))
+                .andExpect(jsonPath("$.status").value("OK"));
+    }
+
+    @Test
+    void shouldNotResetInterpretRateLimitWhenSameUserGetsNewSession() throws Exception {
+        String email = uniqueEmail();
+        MockHttpSession firstSession = registerAndLogin(email);
+        when(transactionAssistant.interpret("latte and bread"))
+                .thenReturn(new InterpretationResult(InterpretationStatus.OK, "Coffee and bread", 2300L, Category.COMIDA));
+
+        mockMvc.perform(post("/transactions/interpret")
+                        .with(csrf())
+                        .session(firstSession)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"prompt":"latte and bread"}
+                                """))
+                .andExpect(status().isOk());
+
+        MockHttpSession renewedSession = login(email);
+
+        mockMvc.perform(post("/transactions/interpret")
+                        .with(csrf())
+                        .session(renewedSession)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"prompt":"latte and bread"}
+                                """))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().string(HttpHeaders.RETRY_AFTER, "60"))
+                .andExpect(jsonPath("$.error").value("assistant_rate_limited"));
     }
 
     private MockHttpSession registerAndLogin(String email) throws Exception {
         register(email);
+        return login(email);
+    }
+
+    private MockHttpSession login(String email) throws Exception {
         return (MockHttpSession) mockMvc.perform(post("/auth/login")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)

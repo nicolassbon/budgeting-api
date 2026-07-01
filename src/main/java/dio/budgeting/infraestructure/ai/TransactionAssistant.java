@@ -7,5 +7,5 @@ import org.springframework.web.multipart.MultipartFile;
 public interface TransactionAssistant {
     ResponseEntity<Resource> transcribe(MultipartFile file);
 
-    TransactionDraft interpret(String prompt);
+    InterpretationResult interpret(String prompt);
 }
