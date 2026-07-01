@@ -1,4 +1,4 @@
-package dio.budgeting.assistant;
+package dio.budgeting.infraestructure.ai;
 
 import org.springframework.core.io.Resource;
 import org.springframework.http.ResponseEntity;

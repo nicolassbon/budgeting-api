@@ -22,7 +22,7 @@ The system documentation MUST describe the official MVP architecture as pragmati
 
 ### Requirement: Define responsibilities for each layer boundary
 
-The system documentation MUST define that controllers handle HTTP and transport concerns, application services coordinate use cases and transactions, domain models hold business rules, and infrastructure owns persistence, security, AI, and framework integration details. Within the current package layout, `assistant` and `config` SHALL be documented as infrastructure-owned edges rather than domain or application centers.
+The system documentation MUST define that controllers handle HTTP and transport concerns, application services coordinate use cases and transactions, domain models hold business rules, and infrastructure owns persistence, security, AI, and framework integration details. Within the current package layout, AI orchestration SHALL live under `infraestructure/ai`, assistant HTTP adapters SHALL live under `infraestructure/http/assistant`, and `config` SHALL be documented as infrastructure-owned edges rather than domain or application centers.
 
 #### Scenario: Contributors can place transport logic correctly
 - GIVEN a contributor adds or reviews an endpoint change

@@ -1,4 +1,4 @@
-package dio.budgeting.assistant;
+package dio.budgeting.infraestructure.http.assistant;
 
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
@@ -7,7 +7,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 
-final class AssistantHttpResponses {
+public final class AssistantHttpResponses {
 
     private static final MediaType AUDIO_MP3 = MediaType.parseMediaType("audio/mp3");
     private static final String AUDIO_FILE_NAME = "audio.mp3";
@@ -15,7 +15,7 @@ final class AssistantHttpResponses {
     private AssistantHttpResponses() {
     }
 
-    static ResponseEntity<Resource> mp3Attachment(byte[] audio) {
+    public static ResponseEntity<Resource> mp3Attachment(byte[] audio) {
         return ResponseEntity.ok()
                 .contentType(AUDIO_MP3)
                 .header(HttpHeaders.CONTENT_DISPOSITION,

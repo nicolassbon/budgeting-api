@@ -1,4 +1,4 @@
-package dio.budgeting.assistant;
+package dio.budgeting.infraestructure.ai;
 
 import dio.budgeting.application.TransactionService;
 import dio.budgeting.domain.Category;

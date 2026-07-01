@@ -1,5 +1,7 @@
-package dio.budgeting.assistant;
+package dio.budgeting.infraestructure.http.assistant;
 
+import dio.budgeting.infraestructure.ai.AssistantIntegrationException;
+import dio.budgeting.infraestructure.ai.AssistantValidationException;
 import dio.budgeting.infraestructure.http.TransactionController;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

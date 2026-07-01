@@ -1,9 +1,9 @@
 package dio.budgeting.infraestructure.http;
 
-import dio.budgeting.assistant.TransactionAssistant;
-import dio.budgeting.assistant.AssistantExceptionHandler;
-import dio.budgeting.assistant.AssistantIntegrationException;
-import dio.budgeting.assistant.TransactionDraft;
+import dio.budgeting.infraestructure.ai.TransactionAssistant;
+import dio.budgeting.infraestructure.http.assistant.AssistantExceptionHandler;
+import dio.budgeting.infraestructure.ai.AssistantIntegrationException;
+import dio.budgeting.infraestructure.ai.TransactionDraft;
 import dio.budgeting.application.TransactionService;
 import dio.budgeting.application.TransactionNotFoundException;
 import dio.budgeting.application.input.PersistTransactionInput;

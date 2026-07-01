@@ -1,4 +1,4 @@
-package dio.budgeting.assistant;
+package dio.budgeting.infraestructure.http.assistant;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

@@ -1,6 +1,7 @@
-package dio.budgeting.assistant;
+package dio.budgeting.infraestructure.ai;
 
 import dio.budgeting.application.TransactionService;
+import dio.budgeting.infraestructure.http.assistant.AssistantHttpResponses;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.audio.transcription.TranscriptionModel;

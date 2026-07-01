@@ -25,12 +25,9 @@
 ## Architecture map
 
 - `src/main/java/dio/budgeting/BudgetingApplication.java` is the Spring entrypoint.
-- Root package `dio.budgeting` contains the AI/demo HTTP controllers:
-  - `ChatClientController`
-  - `ChatModelController`
-  - `TranscriptionController`
-  - `TextToSpeechController`
 - Transaction logic lives under the layered slice `dio.budgeting.{domain,application,infraestructure,config}`.
+- AI orchestration lives in `dio.budgeting.infraestructure.ai`.
+- Assistant/demo HTTP controllers live in `dio.budgeting.infraestructure.http.assistant`.
 - `infraestructure` is intentionally misspelled in package names. Do **not** rename it casually; that is a dedicated refactor.
 
 ## Java style

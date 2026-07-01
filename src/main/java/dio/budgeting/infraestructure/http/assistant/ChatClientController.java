@@ -1,5 +1,7 @@
-package dio.budgeting.assistant;
+package dio.budgeting.infraestructure.http.assistant;
 
+import dio.budgeting.infraestructure.ai.AssistantInputValidator;
+import dio.budgeting.infraestructure.ai.AssistantIntegrationException;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;

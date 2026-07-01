@@ -2,7 +2,7 @@ schema: spec-driven
 strict_tdd: true
 context: |
   Stack: Java 25 + Gradle wrapper + Spring Boot 4.0.6 + Spring AI 2.0.0-M4 + PostgreSQL/Flyway.
-  Architecture: pragmatic Layered Architecture for the MVP under dio.budgeting.{domain,application,infraestructure,assistant,config}; preserve the infraestructure typo.
+  Architecture: pragmatic Layered Architecture for the MVP under dio.budgeting.{domain,application,infraestructure,config}; preserve the infraestructure typo. AI orchestration lives in infraestructure/ai and assistant/demo HTTP adapters live in infraestructure/http/assistant.
   Entry points: root AI/demo controllers plus transaction HTTP adapter in infraestructure/http.
   Persistence: Spring Data JPA validates schema on startup and relies on dio.budgeting.config.FlywayConfig to migrate before Hibernate.
   Runtime: docker compose runs Postgres and optional full-stack backend; .env.example documents the local environment contract.

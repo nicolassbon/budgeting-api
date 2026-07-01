@@ -1,4 +1,4 @@
-package dio.budgeting.assistant;
+package dio.budgeting.infraestructure.ai;
 
 public class AssistantIntegrationException extends RuntimeException {
 

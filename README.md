@@ -35,7 +35,8 @@ Como no-objetivo explícito para este desafío: **strict Hexagonal Architecture 
 *   `domain/`: core business models, invariants, and repository contracts.
 *   `application/`: use-case orchestration, transaction boundaries, and user-scoped operations.
 *   `infraestructure/`: HTTP, persistence, security, and framework adapters.
-*   `assistant/`: AI-facing orchestration owned by the infrastructure edge.
+*   `infraestructure/ai/`: AI-facing orchestration owned by the infrastructure edge.
+*   `infraestructure/http/assistant/`: assistant/demo HTTP adapters and AI HTTP error responses.
 *   `config/`: configuración de Spring Boot, seguridad y Flyway para sostener los límites anteriores.
 
 ### Restricciones del MVP

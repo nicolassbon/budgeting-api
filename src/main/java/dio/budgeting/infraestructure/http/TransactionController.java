@@ -1,8 +1,8 @@
 package dio.budgeting.infraestructure.http;
 
-import dio.budgeting.assistant.AssistantInputValidator;
-import dio.budgeting.assistant.TransactionAssistant;
-import dio.budgeting.assistant.TransactionDraft;
+import dio.budgeting.infraestructure.ai.AssistantInputValidator;
+import dio.budgeting.infraestructure.ai.TransactionAssistant;
+import dio.budgeting.infraestructure.ai.TransactionDraft;
 import dio.budgeting.application.TransactionService;
 import dio.budgeting.application.input.TransactionHistoryFilters;
 import dio.budgeting.domain.Category;

@@ -1,8 +1,8 @@
 package dio.budgeting.infraestructure.http;
 
 import dio.budgeting.BudgetingApplication;
-import dio.budgeting.assistant.TransactionAssistant;
-import dio.budgeting.assistant.TransactionDraft;
+import dio.budgeting.infraestructure.ai.TransactionAssistant;
+import dio.budgeting.infraestructure.ai.TransactionDraft;
 import dio.budgeting.domain.Category;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

@@ -1,6 +1,7 @@
-package dio.budgeting.assistant;
+package dio.budgeting.infraestructure.http.assistant;
 
-
+import dio.budgeting.infraestructure.ai.AssistantInputValidator;
+import dio.budgeting.infraestructure.ai.AssistantIntegrationException;
 import org.springframework.ai.audio.transcription.TranscriptionModel;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PostMapping;

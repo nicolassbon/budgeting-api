@@ -16,7 +16,7 @@ class ArchitectureDocumentationGuidanceTest {
     private static final Path README_PATH = Path.of("README.md");
     private static final Path OPENSPEC_CONFIG_PATH = Path.of("openspec/config.yaml");
     private static final Path ARCHITECTURE_SPEC_PATH = Path.of("openspec/specs/architecture-guidance/spec.md");
-    private static final Path ASSISTANT_FACADE_PATH = Path.of("src/main/java/dio/budgeting/assistant/TransactionAssistantFacade.java");
+    private static final Path ASSISTANT_FACADE_PATH = Path.of("src/main/java/dio/budgeting/infraestructure/ai/TransactionAssistantFacade.java");
     private static final Path DOMAIN_PATH = Path.of("src/main/java/dio/budgeting/domain");
 
     @Test
@@ -36,7 +36,7 @@ class ArchitectureDocumentationGuidanceTest {
         assertThat(readme).contains("`domain/`: core business models, invariants, and repository contracts");
         assertThat(readme).contains("`application/`: use-case orchestration, transaction boundaries, and user-scoped operations");
         assertThat(readme).contains("`infraestructure/`: HTTP, persistence, security, and framework adapters");
-        assertThat(readme).contains("`assistant/`: AI-facing orchestration owned by the infrastructure edge");
+        assertThat(readme).contains("`infraestructure/ai/`: AI-facing orchestration owned by the infrastructure edge");
         assertThat(readme).contains("Manual transaction creation remains available even if AI flows fail or are not used");
         assertThat(readme).contains("manual editing is part of the target MVP scope but must be introduced through an explicit backend change");
     }
