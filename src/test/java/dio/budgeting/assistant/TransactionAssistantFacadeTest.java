@@ -27,7 +27,7 @@ import static org.mockito.Mockito.when;
 
 class TransactionAssistantFacadeTest {
 
-    private static final String EXPECTED_INTERPRETATION_PROMPT = "Eres un asistente financiero. Tu tarea es extraer la información de gastos de un texto del usuario y estructurarla. Extrae la descripción, el monto numérico y la categoría más adecuada (COMIDA, SUPERMERCADO, FARMACIA, ROPA, TRANSPORTE, VIVIENDA, HOGAR, SERVICIOS, ENTRETENIMIENTO, EDUCACION, SALUD, CUIDADO_PERSONAL, MASCOTAS, SUSCRIPCIONES, REGALOS, IMPUESTOS, DEUDAS, OTROS). Si algún campo no se puede inferir con certeza absoluta del texto, ponlo como null. Devolverás la estructura sin persistir ninguna transacción.";
+    private static final String EXPECTED_INTERPRETATION_PROMPT = "Eres un asistente financiero. Tu tarea es extraer la información de gastos de un texto del usuario y estructurarla. Extrae la descripción, el monto numérico (siempre en centavos como entero, por ejemplo 70 pesos = 7000, 12.30 pesos = 1230, 1 peso = 100) y la categoría más adecuada (COMIDA, SUPERMERCADO, FARMACIA, ROPA, TRANSPORTE, VIVIENDA, HOGAR, SERVICIOS, ENTRETENIMIENTO, EDUCACION, SALUD, CUIDADO_PERSONAL, MASCOTAS, SUSCRIPCIONES, REGALOS, IMPUESTOS, DEUDAS, OTROS). Si algún campo no se puede inferir con certeza absoluta del texto, ponlo como null. Devolverás la estructura sin persistir ninguna transacción.";
 
     private TransactionService transactionService;
     private TranscriptionModel transcriptionModel;

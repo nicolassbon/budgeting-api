@@ -19,10 +19,11 @@ public record DashboardSummaryResponse(
                 .toList();
         return new DashboardSummaryResponse(
                 period,
-                aggregate.totalAmount(),
-                BigDecimal.valueOf(aggregate.totalAmount()).setScale(2, RoundingMode.HALF_UP).doubleValue(),
+                aggregate.totalAmountCents(),
+                BigDecimal.valueOf(aggregate.totalAmountCents() / 100.0).setScale(2, RoundingMode.HALF_UP).doubleValue(),
                 aggregate.transactionCount(),
                 categories
         );
     }
 }
+

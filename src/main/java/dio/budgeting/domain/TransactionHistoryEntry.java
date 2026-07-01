@@ -5,8 +5,9 @@ import java.time.Instant;
 public record TransactionHistoryEntry(
         TransactionId id,
         String description,
-        long amount,
+        long amountCents,
         Category category,
         Instant occurredAt
 ) {
 }
+

@@ -3,10 +3,11 @@ package dio.budgeting.domain;
 import java.util.List;
 
 public record DashboardAggregate(
-        long totalAmount,
+        long totalAmountCents,
         long transactionCount,
         List<CategoryAggregate> categoryAggregates
 ) {
-    public record CategoryAggregate(Category category, long totalAmount, long transactionCount) {
+    public record CategoryAggregate(Category category, long totalAmountCents, long transactionCount) {
     }
 }
+

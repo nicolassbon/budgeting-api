@@ -10,7 +10,6 @@ import dio.budgeting.domain.TransactionId;
 import dio.budgeting.domain.TransactionRepository;
 import org.junit.jupiter.api.Test;
 
-import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -43,14 +42,14 @@ class DashboardServiceTest {
         assertThat(repository.requestedOwnerId).isEqualTo(99L);
         assertThat(summary.transactionCount()).isEqualTo(3L);
         assertThat(summary.totalAmountCents()).isEqualTo(5750L);
-        assertThat(summary.totalAmount()).isEqualTo(5750.0);
+        assertThat(summary.totalAmount()).isEqualTo(57.5);
         assertThat(summary.period().from()).isEqualTo(LocalDate.parse("2026-06-01"));
         assertThat(summary.period().to()).isEqualTo(LocalDate.parse("2026-07-01"));
         assertThat(summary.topCategories())
                 .extracting("category", "totalAmount", "transactionCount")
                 .containsExactly(
-                        tuple("COMIDA", 3500.0, 2L),
-                        tuple("TRANSPORTE", 2250.0, 1L)
+                        tuple("COMIDA", 35.0, 2L),
+                        tuple("TRANSPORTE", 22.5, 1L)
                 );
     }
 

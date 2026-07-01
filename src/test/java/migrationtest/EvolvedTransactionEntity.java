@@ -1,6 +1,7 @@
 package migrationtest;
 
 import dio.budgeting.domain.Category;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -19,10 +20,12 @@ public class EvolvedTransactionEntity {
 
     private String description;
 
-    private long amount;
+    @Column(name = "amount")
+    private long amountCents;
 
     @Enumerated(EnumType.STRING)
     private Category category;
 
     private String notes;
 }
+

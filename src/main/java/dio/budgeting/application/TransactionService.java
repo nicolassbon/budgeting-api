@@ -84,9 +84,9 @@ public class TransactionService {
                 .toList();
 
         long totalAmountCents = entries.stream()
-                .mapToLong(TransactionHistoryEntry::amount)
+                .mapToLong(TransactionHistoryEntry::amountCents)
                 .sum();
-        double totalAmount = (double) totalAmountCents;
+        double totalAmount = totalAmountCents / 100.0;
         long transactionCount = items.size();
 
         return new TransactionHistoryResponse(items, totalAmountCents, totalAmount, transactionCount);
@@ -97,8 +97,9 @@ public class TransactionService {
                 entry.id().id().toString(),
                 entry.description(),
                 entry.category().name(),
-                (double) entry.amount(),
+                (double) entry.amountCents(),
                 entry.occurredAt()
         );
     }
 }
+

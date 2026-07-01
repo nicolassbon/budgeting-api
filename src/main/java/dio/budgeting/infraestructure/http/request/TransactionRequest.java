@@ -10,3 +10,4 @@ public record TransactionRequest(String description, Category category, long amo
         return PersistTransactionInput.of(description, amount, category, date);
     }
 }
+

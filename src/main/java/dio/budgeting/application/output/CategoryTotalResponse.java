@@ -14,9 +14,10 @@ public record CategoryTotalResponse(
     public static CategoryTotalResponse from(DashboardAggregate.CategoryAggregate aggregate) {
         return new CategoryTotalResponse(
                 aggregate.category().name(),
-                aggregate.totalAmount(),
-                BigDecimal.valueOf(aggregate.totalAmount()).setScale(2, RoundingMode.HALF_UP).doubleValue(),
+                aggregate.totalAmountCents(),
+                BigDecimal.valueOf(aggregate.totalAmountCents() / 100.0).setScale(2, RoundingMode.HALF_UP).doubleValue(),
                 aggregate.transactionCount()
         );
     }
 }
+

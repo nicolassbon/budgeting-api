@@ -20,7 +20,8 @@ public class TransactionEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String description;
-    private long amount;
+    @Column(name = "amount")
+    private long amountCents;
 
     @Enumerated(EnumType.STRING)
     private Category category;
@@ -35,7 +36,7 @@ public class TransactionEntity {
         return new TransactionEntity(
                 transaction.getId().id(),
                 transaction.getDescription(),
-                transaction.getAmount(),
+                transaction.getAmountCents(),
                 transaction.getCategory(),
                 transaction.getOwnerId(),
                 transaction.getOccurredAt()
@@ -46,7 +47,7 @@ public class TransactionEntity {
         return new Transaction(
                 new TransactionId(this.id),
                 this.description,
-                this.amount,
+                this.amountCents,
                 this.category,
                 this.ownerId,
                 this.occurredAt
@@ -57,9 +58,10 @@ public class TransactionEntity {
         return new TransactionHistoryEntry(
                 new TransactionId(this.id),
                 this.description,
-                this.amount,
+                this.amountCents,
                 this.category,
                 this.occurredAt
         );
     }
 }
+

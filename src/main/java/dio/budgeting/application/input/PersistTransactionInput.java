@@ -19,3 +19,4 @@ public record PersistTransactionInput(
         return new PersistTransactionInput(description, amount, category, occurredAt);
     }
 }
+

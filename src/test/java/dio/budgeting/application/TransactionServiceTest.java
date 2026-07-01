@@ -2,8 +2,6 @@ package dio.budgeting.application;
 
 import dio.budgeting.application.input.PersistTransactionInput;
 import dio.budgeting.application.input.TransactionHistoryFilters;
-import dio.budgeting.application.output.TransactionHistoryResponse;
-import dio.budgeting.application.output.TransactionOutput;
 import dio.budgeting.domain.Category;
 import dio.budgeting.domain.DashboardAggregate;
 import dio.budgeting.domain.Transaction;
@@ -32,7 +30,7 @@ class TransactionServiceTest {
 
         assertThat(repository.savedTransaction()).isNotNull();
         assertThat(repository.savedTransaction().getDescription()).isEqualTo("Supermarket");
-        assertThat(repository.savedTransaction().getAmount()).isEqualTo(1250L);
+        assertThat(repository.savedTransaction().getAmountCents()).isEqualTo(1250L);
         assertThat(repository.savedTransaction().getCategory()).isEqualTo(Category.COMIDA);
         assertThat(repository.savedTransaction().getOwnerId()).isEqualTo(42L);
         assertThat(repository.savedTransaction().getOccurredAt())
@@ -77,7 +75,7 @@ class TransactionServiceTest {
         assertThat(repository.findByOwnerId()).isEqualTo(42L);
         assertThat(repository.savedTransaction().getId().id()).isEqualTo(10L);
         assertThat(repository.savedTransaction().getDescription()).isEqualTo("New grocery");
-        assertThat(repository.savedTransaction().getAmount()).isEqualTo(2500L);
+        assertThat(repository.savedTransaction().getAmountCents()).isEqualTo(2500L);
         assertThat(repository.savedTransaction().getCategory()).isEqualTo(Category.FARMACIA);
         assertThat(repository.savedTransaction().getOccurredAt()).isEqualTo(Instant.parse("2026-03-05T10:00:00Z"));
         assertThat(output.id()).isEqualTo("10");
@@ -155,7 +153,7 @@ class TransactionServiceTest {
                     assertThat(output.date()).isEqualTo(Instant.parse("2026-03-10T08:00:00Z"));
                 });
         assertThat(response.totalAmountCents()).isEqualTo(500L);
-        assertThat(response.totalAmount()).isEqualTo(500.0);
+        assertThat(response.totalAmount()).isEqualTo(5.0);
         assertThat(response.transactionCount()).isEqualTo(1L);
     }
 
@@ -198,8 +196,34 @@ class TransactionServiceTest {
 
         assertThat(response.transactionCount()).isEqualTo(3L);
         assertThat(response.totalAmountCents()).isEqualTo(5750L);
-        assertThat(response.totalAmount()).isEqualTo(5750.0);
+        assertThat(response.totalAmount()).isEqualTo(57.5);
+        assertThat(response.totalAmount()).isEqualTo(response.totalAmountCents() / 100.0);
         assertThat(response.items()).hasSize(3);
+        assertThat(response.items().get(0).value()).isEqualTo(500.0);
+        assertThat(response.items().get(1).value()).isEqualTo(2250.0);
+        assertThat(response.items().get(2).value()).isEqualTo(3000.0);
+    }
+
+    @Test
+    void shouldComputeTotalAmountInPesosAsTotalAmountCentsDividedBy100() {
+        var repository = new FakeTransactionRepository();
+        repository.historyToReturn = List.of(
+                new TransactionHistoryEntry(new TransactionId(1L), "Coffee", 500L, Category.COMIDA, Instant.parse("2026-03-10T08:00:00Z")),
+                new TransactionHistoryEntry(new TransactionId(2L), "Subway", 2250L, Category.TRANSPORTE, Instant.parse("2026-03-12T08:00:00Z")),
+                new TransactionHistoryEntry(new TransactionId(3L), "Groceries", 3000L, Category.COMIDA, Instant.parse("2026-03-15T08:00:00Z"))
+        );
+        var service = new TransactionService(repository, () -> 7L);
+        var filters = new TransactionHistoryFilters(
+                Optional.of(Instant.parse("2026-03-01T00:00:00Z")),
+                Optional.of(Instant.parse("2026-04-01T00:00:00Z")),
+                Optional.empty()
+        );
+
+        var response = service.findHistory(filters);
+
+        assertThat(response.totalAmountCents()).isEqualTo(5750L);
+        assertThat(response.totalAmount()).isEqualTo(57.5);
+        assertThat(response.totalAmount()).isEqualTo(response.totalAmountCents() / 100.0);
     }
 
     private static final class FakeTransactionRepository implements TransactionRepository {
@@ -222,7 +246,7 @@ class TransactionServiceTest {
             return new Transaction(
                     persistedId,
                     transaction.getDescription(),
-                    transaction.getAmount(),
+                    transaction.getAmountCents(),
                     transaction.getCategory(),
                     transaction.getOwnerId(),
                     transaction.getOccurredAt()

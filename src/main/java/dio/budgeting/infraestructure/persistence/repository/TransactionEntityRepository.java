@@ -94,7 +94,7 @@ public interface TransactionEntityRepository extends CrudRepository<TransactionE
                                                          @Param("to") Instant to);
 
     @Query("""
-            SELECT COALESCE(SUM(t.amount), 0) AS totalAmount, COUNT(t) AS transactionCount
+            SELECT COALESCE(SUM(t.amountCents), 0) AS totalAmount, COUNT(t) AS transactionCount
             FROM TransactionEntity t
             WHERE t.ownerId = :ownerId
               AND t.occurredAt >= :from
@@ -105,13 +105,13 @@ public interface TransactionEntityRepository extends CrudRepository<TransactionE
                                                 @Param("to") Instant to);
 
     @Query("""
-            SELECT t.category AS category, COALESCE(SUM(t.amount), 0) AS totalAmount, COUNT(t) AS transactionCount
+            SELECT t.category AS category, COALESCE(SUM(t.amountCents), 0) AS totalAmount, COUNT(t) AS transactionCount
             FROM TransactionEntity t
             WHERE t.ownerId = :ownerId
               AND t.occurredAt >= :from
               AND t.occurredAt < :to
             GROUP BY t.category
-            ORDER BY SUM(t.amount) DESC
+            ORDER BY SUM(t.amountCents) DESC
             """)
     List<CategoryAggregateProjection> aggregateCategoriesByOwnerAndPeriod(@Param("ownerId") Long ownerId,
                                                                           @Param("from") Instant from,

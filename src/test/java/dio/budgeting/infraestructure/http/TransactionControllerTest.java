@@ -11,6 +11,12 @@ import dio.budgeting.application.input.TransactionHistoryFilters;
 import dio.budgeting.application.output.TransactionHistoryResponse;
 import dio.budgeting.application.output.TransactionOutput;
 import dio.budgeting.domain.Category;
+import dio.budgeting.domain.DashboardAggregate;
+import dio.budgeting.domain.Transaction;
+import dio.budgeting.domain.TransactionHistoryCriteria;
+import dio.budgeting.domain.TransactionHistoryEntry;
+import dio.budgeting.domain.TransactionId;
+import dio.budgeting.domain.TransactionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -26,6 +32,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -202,7 +209,7 @@ class TransactionControllerTest {
                                 new TransactionOutput("12", "Subway", "TRANSPORTE", 2250.0, Instant.parse("2026-03-12T08:00:00Z"))
                         ),
                         2750L,
-                        2750.0,
+                        27.5,
                         2L
                 ));
 
@@ -219,7 +226,7 @@ class TransactionControllerTest {
                 .andExpect(jsonPath("$.items[1].category").value("TRANSPORTE"))
                 .andExpect(jsonPath("$.items[1].date").value("2026-03-12T08:00:00Z"))
                 .andExpect(jsonPath("$.totalAmountCents").value(2750))
-                .andExpect(jsonPath("$.totalAmount").value(2750.0))
+                .andExpect(jsonPath("$.totalAmount").value(27.5))
                 .andExpect(jsonPath("$.transactionCount").value(2));
     }
 
@@ -315,6 +322,20 @@ class TransactionControllerTest {
     }
 
     @Test
+    void shouldReturnAmountInCentavosFromInterpretEndpoint() throws Exception {
+        when(transactionAssistant.interpret("latte and bread"))
+                .thenReturn(new TransactionDraft("Coffee and bread", 2300L, Category.COMIDA));
+
+        mockMvc.perform(post("/transactions/interpret")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"prompt\": \"latte and bread\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.amount").value(2300))
+                .andExpect(jsonPath("$.description").value("Coffee and bread"))
+                .andExpect(jsonPath("$.category").value("COMIDA"));
+    }
+
+    @Test
     void shouldReturnBadRequestForBlankInterpretPrompt() throws Exception {
         mockMvc.perform(post("/transactions/interpret")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -348,5 +369,60 @@ class TransactionControllerTest {
                 .andExpect(status().isBadGateway())
                 .andExpect(jsonPath("$.error").value("assistant_integration_error"))
                 .andExpect(jsonPath("$.message").value("Failed to transcribe the provided audio"));
+    }
+
+    @Test
+    void shouldReturnHistoryItemsWithAmountAsIntegerCentavosNotPesos() throws Exception {
+        // Triangulation test: uses real TransactionService (not mocked) to exercise toOutput
+        // through the HTTP layer, locking the per-item amount unit at centavos.
+        var fakeRepository = new FakeTransactionRepositoryForControllerTest();
+        fakeRepository.historyToReturn = List.of(
+                new TransactionHistoryEntry(new TransactionId(1L), "Coffee", 500L, Category.COMIDA, Instant.parse("2026-03-10T08:00:00Z")),
+                new TransactionHistoryEntry(new TransactionId(2L), "Subway", 2250L, Category.TRANSPORTE, Instant.parse("2026-03-12T08:00:00Z"))
+        );
+        var realService = new TransactionService(fakeRepository, () -> 42L);
+        var controller = new TransactionController(realService, transactionAssistant);
+        var testMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setControllerAdvice(new AssistantExceptionHandler())
+                .build();
+
+        testMvc.perform(get("/transactions")
+                        .param("from", "2026-03-01")
+                        .param("to", "2026-03-31"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].amount").value(500.0))
+                .andExpect(jsonPath("$.items[1].amount").value(2250.0))
+                .andExpect(jsonPath("$.totalAmountCents").value(2750))
+                .andExpect(jsonPath("$.totalAmount").value(27.5))
+                .andExpect(jsonPath("$.transactionCount").value(2));
+    }
+
+    private static final class FakeTransactionRepositoryForControllerTest implements TransactionRepository {
+        private List<TransactionHistoryEntry> historyToReturn = List.of();
+
+        @Override
+        public Transaction save(Transaction transaction) {
+            return transaction;
+        }
+
+        @Override
+        public Optional<Transaction> findByIdAndOwnerId(TransactionId id, Long ownerId) {
+            return Optional.empty();
+        }
+
+        @Override
+        public List<Transaction> findAllByCategoryAndOwnerId(Category category, Long ownerId) {
+            return List.of();
+        }
+
+        @Override
+        public List<TransactionHistoryEntry> findHistory(TransactionHistoryCriteria criteria) {
+            return historyToReturn;
+        }
+
+        @Override
+        public DashboardAggregate aggregateByOwnerAndPeriod(Long ownerId, Instant from, Instant to) {
+            return new DashboardAggregate(0L, 0L, List.of());
+        }
     }
 }

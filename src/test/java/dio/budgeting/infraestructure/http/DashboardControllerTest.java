@@ -25,11 +25,11 @@ class DashboardControllerTest {
         when(service.currentMonthSummary()).thenReturn(new DashboardSummaryResponse(
                 new PeriodResponse(LocalDate.of(2026, 3, 1), LocalDate.of(2026, 4, 1)),
                 5750L,
-                5750.0,
+                57.5,
                 3L,
                 List.of(
-                        new CategoryTotalResponse("COMIDA", 3500L, 3500.0, 2L),
-                        new CategoryTotalResponse("TRANSPORTE", 2250L, 2250.0, 1L)
+                        new CategoryTotalResponse("COMIDA", 3500L, 35.0, 2L),
+                        new CategoryTotalResponse("TRANSPORTE", 2250L, 22.5, 1L)
                 )
         ));
 
@@ -38,13 +38,13 @@ class DashboardControllerTest {
         mockMvc.perform(get("/dashboard/spending"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalAmountCents").value(5750))
-                .andExpect(jsonPath("$.totalAmount").value(5750.0))
+                .andExpect(jsonPath("$.totalAmount").value(57.5))
                 .andExpect(jsonPath("$.transactionCount").value(3))
                 .andExpect(jsonPath("$.period.from").value("2026-03-01"))
                 .andExpect(jsonPath("$.period.to").value("2026-04-01"))
                 .andExpect(jsonPath("$.topCategories[0].category").value("COMIDA"))
                 .andExpect(jsonPath("$.topCategories[0].totalAmountCents").value(3500))
-                .andExpect(jsonPath("$.topCategories[0].totalAmount").value(3500.0))
+                .andExpect(jsonPath("$.topCategories[0].totalAmount").value(35.0))
                 .andExpect(jsonPath("$.topCategories[0].transactionCount").value(2))
                 .andExpect(jsonPath("$.topCategories[1].category").value("TRANSPORTE"));
     }
@@ -80,7 +80,7 @@ class DashboardControllerTest {
                 5750.0,
                 3L,
                 List.of(
-                        new CategoryTotalResponse("COMIDA", 3500L, 3500.0, 2L)
+                        new CategoryTotalResponse("COMIDA", 3500L, 35.0, 2L)
                 )
         ));
 

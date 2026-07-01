@@ -28,6 +28,8 @@ The system MUST persist a transaction date/timestamp and expose it in transactio
 The system MUST keep `POST /transactions` compatible for creating a transaction from `description`, `category`, and `amount`, MAY accept an optional transaction date, and SHALL create the transaction for the authenticated user only.
 (Previously: The endpoint accepted description, category, and amount without date support.)
 
+The `amount` field in `POST /transactions` requests and in every transaction response is an **integer in centavos (1 peso = 100 centavos)**. Clients MUST divide the value by `100` to obtain pesos for display. The same unit applies to the `amount` returned by the `POST /transactions/interpret` draft endpoint.
+
 #### Scenario: Create a transaction successfully
 
 - GIVEN an authenticated user and a JSON body with `description`, a supported `category`, and numeric `amount`
@@ -135,6 +137,7 @@ The system MUST keep `TransactionController` as a thin HTTP adapter for transact
 - GIVEN a JSON body with `prompt` for `POST /transactions/interpret`
 - WHEN the interpretation flow is executed after consolidation
 - THEN the response SHALL keep `description`, `amount`, and `category` fields
+- AND the returned `amount` SHALL be an integer in centavos, consistent with the persisted transaction API
 
 ### Requirement: Prove consolidation with focused compatibility tests
 
@@ -192,6 +195,7 @@ The system MUST require authenticated confirmation before an AI-interpreted expe
 - GIVEN an authenticated user submits `POST /transactions/interpret`
 - WHEN the system returns interpreted expense data
 - THEN the interpretation result SHALL be returned without creating a stored transaction
+- AND the returned `amount` SHALL be an integer in centavos (same unit as the persisted transaction API)
 
 #### Scenario: Confirmed AI save uses the session owner
 - GIVEN an authenticated user confirms an interpreted expense through the supported persistence flow
